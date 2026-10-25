@@ -1,0 +1,6 @@
+[25-Oct-2026 11:20:19 UTC] TypeError: imagealphablending(): Argument #1 ($image) must be of type GdImage, false given in /home/isvainno/travaux.isvainnov.com/lib.php:35
+Stack trace:
+#0 /home/isvainno/travaux.isvainnov.com/lib.php(35): imagealphablending()
+#1 /home/isvainno/travaux.isvainnov.com/lib.php(43): watermark()
+#2 /home/isvainno/travaux.isvainnov.com/index.php(60): sheet()
+#3 {main}
