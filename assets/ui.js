@@ -20,4 +20,13 @@ document.addEventListener('submit',async e=>{const b=e.submitter||e.target.query
  if(b)setTimeout(()=>b.classList.add('loading'),0);});
 document.addEventListener('change',e=>{if(e.target.matches('select[data-auto]'))e.target.form.submit();});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+// Bouton « Installer l'application » (Android/Chrome via beforeinstallprompt, iPhone via instructions)
+const SA=matchMedia('(display-mode: standalone)').matches||navigator.standalone,IOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const get=k=>{try{return localStorage.getItem(k);}catch{return null;}},set=k=>{try{localStorage.setItem(k,'1');}catch{}};
+function ib(go){if(SA||get('dp-noinst')||q('.inst'))return;const w=document.createElement('div'),b=document.createElement('button'),x=document.createElement('button');
+ w.className='inst';b.type=x.type='button';b.textContent='📲 Installer l’application';x.className='ghost';x.textContent='×';x.setAttribute('aria-label','Masquer');
+ b.onclick=async()=>{if(await go())w.remove();};x.onclick=()=>{set('dp-noinst');w.remove();};w.append(b,x);document.body.append(w);}
+let ev=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();ev=e;ib(async()=>{ev.prompt();const r=await ev.userChoice;ev=null;return r.outcome==='accepted';});});
+addEventListener('appinstalled',()=>q('.inst')?.remove());
+if(IOS&&!SA)ib(async()=>{await dlg.alert('Dans Safari, touchez le bouton Partager (carré avec une flèche), puis « Sur l’écran d’accueil ».','info','Installer sur iPhone');return false;});
 addEventListener('pageshow',()=>document.querySelectorAll('.loading').forEach(b=>b.classList.remove('loading')));})();

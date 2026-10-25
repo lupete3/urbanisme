@@ -53,3 +53,7 @@ table{width:100%;border-collapse:collapse}th{font-size:12px;color:var(--mu);text
 .dlg.warning{border-top-color:var(--wa)}.dlg.warning .dlg-i{color:var(--wa)}.dlg>div{display:flex;gap:8px;justify-content:flex-end}
 .danger,button.danger{background:var(--er);border-color:var(--er)}.danger:hover,button.danger:hover{background:var(--er);filter:brightness(.9)}
 .nt{display:flex;gap:12px;align-items:flex-start;text-decoration:none;color:var(--tx);margin:8px 0}.nt.new{border-left:4px solid var(--pr)}.nt .i{margin-top:3px;color:var(--mu)}
+
+.inst{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50;display:flex;gap:6px;align-items:center;background:var(--card);border:1px solid var(--bd);border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.18);max-width:calc(100% - 32px)}
+.inst button{width:auto;margin:0;border-radius:999px;padding:8px 14px;white-space:nowrap}
+.inst .ghost{padding:8px 12px}
