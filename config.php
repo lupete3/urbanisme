@@ -1,7 +1,7 @@
 <?php
 return array (
   'h' => 'localhost',
-  'n' => 'isvainno_dp',
-  'u' => 'isvainno_dp',
+  'n' => 'u200307643_dp',
+  'u' => 'u200307643_dp',
   'p' => 'Travaux@2026',
 );
