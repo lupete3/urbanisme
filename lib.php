@@ -2,7 +2,15 @@
 declare(strict_types=1);
 if(!is_file(__DIR__.'/config.php')){header('Location: install.php');exit;}
 $C=require __DIR__.'/config.php';
-ini_set('display_errors','0');ini_set('log_errors','1');ini_set('error_log',__DIR__.'/storage/error.log');
+// Données persistantes (images, journal, marqueurs de migration) HORS du dossier déployé :
+// le déploiement Git de l'hébergeur efface les fichiers qui ne sont pas dans le dépôt.
+define('DATA',(function(array $c):string{$d=rtrim((string)($c['data']??dirname(__DIR__).'/dossierurba-data'),'/\\');
+ if(!is_dir($d))@mkdir($d,0750,true);if(!is_dir($d)||!is_writable($d))$d=__DIR__.'/storage';
+ foreach(['img','lib'] as $s){if(!is_dir("$d/$s"))@mkdir("$d/$s",0750,true);
+  // Reprise des fichiers encore présents dans l'ancien emplacement
+  $o=__DIR__."/storage/$s";if($d!==__DIR__.'/storage'&&is_dir($o)){foreach(glob("$o/*")?:[] as $f)if(is_file($f)&&!is_file("$d/$s/".basename($f)))@rename($f,"$d/$s/".basename($f));}}
+ if(!is_file("$d/.htaccess"))@file_put_contents("$d/.htaccess","Require all denied\n");return $d;})($C));
+ini_set('display_errors','0');ini_set('log_errors','1');ini_set('error_log',DATA.'/error.log');
 ini_set('session.use_strict_mode','1');
 session_set_cookie_params(['httponly'=>true,'secure'=>!empty($_SERVER['HTTPS']),'samesite'=>'Lax']);
 session_start();
@@ -77,7 +85,7 @@ function tools(string $a,string $q,string $st,string $ph,bool $status=true):stri
  return '<form method="get" class="tools"><input type="hidden" name="a" value="'.$a.'"><div class="sb">'.icon('search').'<input type="search" name="q" value="'.e($q).'" placeholder="'.e($ph).'" aria-label="Rechercher"></div>'.($status?'<select name="st" data-auto aria-label="Statut">'.$o.'</select>':'').'<button>'.icon('search').'Rechercher</button></form>';}
 function page(string $t,string $b,string $js=''):void{$u=me();$cur=(string)($_GET['a']??'dash');if(in_array($cur,['dossier','edit'],true))$cur='dash';
  $sy=['home'=>'<path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>','shield'=>'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>','users'=>'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M17 11a3 3 0 1 0 0-6M21.5 19c0-2.5-1.8-4.5-4-5"/>','log'=>'<path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/>','out'=>'<path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/>','search'=>'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/>','plus'=>'<path d="M12 5v14M5 12h14"/>','file'=>'<path d="M6 3h8l4 4v14H6zM14 3v4h4"/>','check'=>'<path d="M5 12l5 5 9-10"/>','dl'=>'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>','edit'=>'<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>','menu'=>'<path d="M4 7h16M4 12h16M4 17h16"/>','send'=>'<path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/>','sun'=>'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>','moon'=>'<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>','trash'=>'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>','bell'=>'<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>','user'=>'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>','undo'=>'<path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>','img'=>'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/>'];
- echo '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#1f4fd8"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="assets/icon-192.png"><link rel="apple-touch-icon" href="assets/icon-192.png"><title>'.e($t).' – '.APP.'</title><link rel="stylesheet" href="'.asset('app.css').'"><script src="'.asset('theme.js').'"></script><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>';
+ echo '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#0d3466"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="assets/icon-192.png"><link rel="apple-touch-icon" href="assets/icon-192.png"><title>'.e($t).' – '.APP.'</title><link rel="stylesheet" href="'.asset('app.css').'"><script src="'.asset('theme.js').'"></script><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>';
  foreach($sy as $k=>$v)echo '<symbol id="i-'.$k.'" viewBox="0 0 24 24">'.$v.'</symbol>';echo '</defs></svg><body><div id="splash" aria-hidden="true"><img src="assets/logo.png" alt=""></div>';
  $brand='<a class="brand" href="index.php"><img src="assets/mark.png" alt=""><span><b>DOSSIER</b><i>Urba.</i></span></a>';$th='<button type="button" class="ghost th" aria-label="Changer de thème" title="Thème clair / sombre">'.icon('sun','sun').icon('moon','moon').'</button>';
  if(!$u)echo '<main class="auth"><div style="position:absolute;top:14px;right:14px">'.$th.'</div><div class="c"><img class="logo" src="assets/logo.png" alt="'.APP.'">'.$b.'</div></main>';
@@ -117,11 +125,11 @@ class MiniPdf{private array $p=[];
   $inf=3+3*$n;$put($inf,'<</Title(Declaration prealable de travaux)/Producer(DOSSIERUrba)>>');$x=strlen($s);$cnt=3*$n+4;$s.="xref\n0 $cnt\n0000000000 65535 f \n";for($i=1;$i<$cnt;$i++)$s.=sprintf("%010d 00000 n \n",$o[$i]);
   return $s."trailer\n<</Size $cnt/Root 1 0 R/Info $inf 0 R>>\nstartxref\n$x\n%%EOF";}}
 
-function savejpeg(?array $f,int $max):?string{if(!$f||$f['error']!==0||$f['size']>8*1048576)return null;$raw=file_get_contents($f['tmp_name']);if((new finfo(FILEINFO_MIME_TYPE))->buffer($raw)!=='image/jpeg')return null;$im=@imagecreatefromstring($raw);if(!$im)return null;$k=min(1,$max/max(imagesx($im),imagesy($im)));if($k<1){$n=imagecreatetruecolor((int)(imagesx($im)*$k),(int)(imagesy($im)*$k));imagecopyresampled($n,$im,0,0,0,0,imagesx($n),imagesy($n),imagesx($im),imagesy($im));$im=$n;}$n=bin2hex(random_bytes(16)).'.jpg';imagejpeg($im,__DIR__.'/storage/img/'.$n,90);return $n;}
-function migrate():void{$f=__DIR__.'/storage/.v2';if(is_file($f))return;try{db()->query('SELECT sheet,data FROM pieces LIMIT 1');}catch(Throwable){db()->exec('ALTER TABLE pieces ADD sheet VARCHAR(64) NULL, ADD data MEDIUMTEXT NULL');}db()->exec('ALTER TABLE pieces MODIFY file VARCHAR(64) NULL');file_put_contents($f,'1');}
+function savejpeg(?array $f,int $max):?string{if(!$f||$f['error']!==0||$f['size']>8*1048576)return null;$raw=file_get_contents($f['tmp_name']);if((new finfo(FILEINFO_MIME_TYPE))->buffer($raw)!=='image/jpeg')return null;$im=@imagecreatefromstring($raw);if(!$im)return null;$k=min(1,$max/max(imagesx($im),imagesy($im)));if($k<1){$n=imagecreatetruecolor((int)(imagesx($im)*$k),(int)(imagesy($im)*$k));imagecopyresampled($n,$im,0,0,0,0,imagesx($n),imagesy($n),imagesx($im),imagesy($im));$im=$n;}$n=bin2hex(random_bytes(16)).'.jpg';imagejpeg($im,DATA.'/img/'.$n,90);return $n;}
+function migrate():void{$f=DATA.'/.v2';if(is_file($f))return;try{db()->query('SELECT sheet,data FROM pieces LIMIT 1');}catch(Throwable){db()->exec('ALTER TABLE pieces ADD sheet VARCHAR(64) NULL, ADD data MEDIUMTEXT NULL');}db()->exec('ALTER TABLE pieces MODIFY file VARCHAR(64) NULL');file_put_contents($f,'1');}
 migrate();
 
-function migrate3():void{$f=__DIR__.'/storage/.v3';if(is_file($f))return;db()->exec("CREATE TABLE IF NOT EXISTS library(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT NOT NULL,name VARCHAR(60) NOT NULL,file VARCHAR(64) NOT NULL,wcm INT NOT NULL DEFAULT 0,hcm INT NOT NULL DEFAULT 0,shared TINYINT NOT NULL DEFAULT 0,created_at DATETIME NOT NULL,FOREIGN KEY(user_id) REFERENCES users(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");@mkdir(__DIR__.'/storage/lib',0750,true);file_put_contents($f,'1');}
+function migrate3():void{$f=DATA.'/.v3';if(is_file($f))return;db()->exec("CREATE TABLE IF NOT EXISTS library(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT NOT NULL,name VARCHAR(60) NOT NULL,file VARCHAR(64) NOT NULL,wcm INT NOT NULL DEFAULT 0,hcm INT NOT NULL DEFAULT 0,shared TINYINT NOT NULL DEFAULT 0,created_at DATETIME NOT NULL,FOREIGN KEY(user_id) REFERENCES users(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");@mkdir(DATA.'/lib',0750,true);file_put_contents($f,'1');}
 migrate3();
 
 function notify(int $uid,string $msg,string $link=''):void{db()->prepare('INSERT INTO notifications(user_id,msg,link,created_at) VALUES(?,?,?,NOW())')->execute([$uid,mb_substr($msg,0,255),$link]);}
@@ -129,29 +137,24 @@ function notifyStaff(string $msg,string $link='',int $except=0):void{foreach(db(
 function unread():int{static $n;if($n===null){$u=me();if(!$u)return 0;$s=db()->prepare('SELECT COUNT(*) FROM notifications WHERE user_id=? AND read_at IS NULL');$s->execute([$u['id']]);$n=(int)$s->fetchColumn();}return $n;}
 function throttled(string $k):bool{$h=hash('sha256',$k);db()->prepare('DELETE FROM login_fails WHERE ts<?')->execute([time()-900]);$s=db()->prepare('SELECT COUNT(*) FROM login_fails WHERE k=? AND ts>?');$s->execute([$h,time()-900]);return (int)$s->fetchColumn()>=8;}
 function failed(string $k):void{db()->prepare('INSERT INTO login_fails(k,ts) VALUES(?,?)')->execute([hash('sha256',$k),time()]);}
-function migrate4():void{$f=__DIR__.'/storage/.v4';if(is_file($f))return;
+function migrate4():void{$f=DATA.'/.v4';if(is_file($f))return;
  try{db()->exec('ALTER TABLE users ADD phone VARCHAR(30) NULL');}catch(Throwable){}
  db()->exec("CREATE TABLE IF NOT EXISTS notifications(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT NOT NULL,msg VARCHAR(255) NOT NULL,link VARCHAR(120) NOT NULL DEFAULT '',read_at DATETIME NULL,created_at DATETIME NOT NULL,INDEX(user_id,read_at),FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
  db()->exec("CREATE TABLE IF NOT EXISTS login_fails(id INT AUTO_INCREMENT PRIMARY KEY,k CHAR(64) NOT NULL,ts INT NOT NULL,INDEX(k,ts)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
  foreach(['ALTER TABLE dossiers ADD INDEX idx_user_status(user_id,status)','ALTER TABLE dossiers ADD INDEX idx_status(status)'] as $q){try{db()->exec($q);}catch(Throwable){}}
  file_put_contents($f,'1');}
 migrate4();
-// v5 : DP7 = photo rapprochée, DP8 = photo de loin (inversées auparavant).
-// Brouillons uniquement : les planches sont effacées pour être réenregistrées avec le bon titre (l'image et les annotations restent).
-function migrate5():void{$f=__DIR__.'/storage/.v5';if(is_file($f))return;
- $s=db()->query("SELECT p.sheet FROM pieces p JOIN dossiers d ON d.id=p.dossier_id WHERE d.status='brouillon' AND p.code IN ('DP7','DP8') AND p.sheet IS NOT NULL");
- foreach($s->fetchAll(PDO::FETCH_COLUMN) as $sh)@unlink(__DIR__.'/storage/img/'.basename($sh));
- db()->exec("UPDATE pieces p JOIN dossiers d ON d.id=p.dossier_id SET p.sheet=NULL,p.code=IF(p.code='DP7','X8','X7') WHERE d.status='brouillon' AND p.code IN ('DP7','DP8')");
- db()->exec("UPDATE pieces SET code=IF(code='X7','DP7','DP8') WHERE code IN ('X7','X8')");
- file_put_contents($f,'1');}
+// v5 : désactivée. Elle inversait DP7/DP8 ; relancée à chaque déploiement (marqueurs effacés),
+// elle effaçait ces planches. Les marqueurs sont désormais conservés dans DATA.
+function migrate5():void{$f=DATA.'/.v5';if(!is_file($f))file_put_contents($f,'1');}
 migrate5();
 // v6 : type de dossier (DP, AP, PD). Les dossiers existants deviennent des DP.
-function migrate6():void{$f=__DIR__.'/storage/.v6';if(is_file($f))return;
+function migrate6():void{$f=DATA.'/.v6';if(is_file($f))return;
  try{db()->exec("ALTER TABLE dossiers ADD type VARCHAR(4) NOT NULL DEFAULT 'DP' AFTER user_id");}catch(Throwable){}
  file_put_contents($f,'1');}
 migrate6();
 // v7 : réglages modifiables par l'admin (émojis proposés dans l'éditeur)
-function migrate7():void{$f=__DIR__.'/storage/.v7';if(is_file($f))return;
+function migrate7():void{$f=DATA.'/.v7';if(is_file($f))return;
  db()->exec("CREATE TABLE IF NOT EXISTS settings(k VARCHAR(40) PRIMARY KEY,v TEXT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
  file_put_contents($f,'1');}
 migrate7();

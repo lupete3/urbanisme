@@ -1,0 +1,7 @@
+# Journaux et données créés sur le serveur (désormais stockés dans ../dossierurba-data)
+error_log
+storage/error.log
+storage/.v*
+storage/img/
+storage/lib/
+.claude/

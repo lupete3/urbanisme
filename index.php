@@ -52,8 +52,8 @@ if($a==='profile'){
    if(!password_verify((string)($_POST['cur']??''),$u['pass_hash']))flash('danger','Le mot de passe est incorrect : compte non supprimé.');
    elseif((int)$pd->fetchColumn()>0)flash('danger','Des dossiers payés sont rattachés à ce compte : contactez l’administrateur pour le supprimer.');
    elseif($u['role']==='admin'&&$ad<2)flash('danger','Vous êtes le seul administrateur : nommez-en un autre avant de supprimer ce compte.');
-   else{$ds=db()->prepare('SELECT id FROM dossiers WHERE user_id=?');$ds->execute([$u['id']]);foreach($ds->fetchAll(PDO::FETCH_COLUMN) as $did){foreach(pieces((int)$did) as $pc)foreach(['file','sheet'] as $k)if(!empty($pc[$k]))@unlink(__DIR__.'/storage/img/'.basename($pc[$k]));}
-    $ls=db()->prepare('SELECT file FROM library WHERE user_id=?');$ls->execute([$u['id']]);foreach($ls->fetchAll(PDO::FETCH_COLUMN) as $lf)@unlink(__DIR__.'/storage/lib/'.basename($lf));
+   else{$ds=db()->prepare('SELECT id FROM dossiers WHERE user_id=?');$ds->execute([$u['id']]);foreach($ds->fetchAll(PDO::FETCH_COLUMN) as $did){foreach(pieces((int)$did) as $pc)foreach(['file','sheet'] as $k)if(!empty($pc[$k]))@unlink(DATA.'/img/'.basename($pc[$k]));}
+    $ls=db()->prepare('SELECT file FROM library WHERE user_id=?');$ls->execute([$u['id']]);foreach($ls->fetchAll(PDO::FETCH_COLUMN) as $lf)@unlink(DATA.'/lib/'.basename($lf));
     foreach(['DELETE FROM dossiers WHERE user_id=?','DELETE FROM library WHERE user_id=?','DELETE FROM users WHERE id=?'] as $q)db()->prepare($q)->execute([$u['id']]);
     session_destroy();header('Location: index.php?a=login');exit;}}
   go('profile');}
@@ -66,7 +66,7 @@ if($a==='reopen'&&$post){$d=dossier((int)($_POST['id']??0));
  if($u['id']==$d['user_id']&&$d['status']==='en_attente'){db()->prepare("UPDATE dossiers SET status='brouillon' WHERE id=?")->execute([$d['id']]);flash('success','Dossier rouvert : modifiez-le puis soumettez-le à nouveau.');notifyStaff('Dossier retiré pour modification : '.$d['titre'].' ('.$u['name'].')','a=dossier&id='.(int)$d['id']);}else flash('danger','Action impossible sur ce dossier.');
  go('dossier','&id='.$d['id']);}
 if($a==='deldoss'&&$post){$d=dossier((int)($_POST['id']??0));$mine=$u['id']==$d['user_id'];
- if(($mine&&$d['status']!=='paye')||$u['role']==='admin'){foreach(pieces((int)$d['id']) as $pc)foreach(['file','sheet'] as $k)if(!empty($pc[$k]))@unlink(__DIR__.'/storage/img/'.basename($pc[$k]));
+ if(($mine&&$d['status']!=='paye')||$u['role']==='admin'){foreach(pieces((int)$d['id']) as $pc)foreach(['file','sheet'] as $k)if(!empty($pc[$k]))@unlink(DATA.'/img/'.basename($pc[$k]));
   db()->prepare('DELETE FROM dossiers WHERE id=?')->execute([$d['id']]);flash('success','Dossier supprimé.');go($mine?'dash':'admin');}
  flash('danger','Suppression impossible : un dossier payé ne peut pas être supprimé.');go('dossier','&id='.$d['id']);}
 
@@ -102,18 +102,18 @@ if($a==='save'&&$post){header('Content-Type: application/json');$d=dossier((int)
  if(!$sh||strlen($data)>200000||json_decode($data)===null){echo '{"ok":0,"err":"données invalides"}';exit;}
  $o=pieces((int)$d['id'])[$c]??null;
  db()->prepare('INSERT INTO pieces(dossier_id,code,file,sheet,data) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE file=COALESCE(VALUES(file),file),sheet=VALUES(sheet),data=VALUES(data)')->execute([$d['id'],$c,$ba,$sh,$data]);
- if($o){if($o['sheet'])@unlink(__DIR__.'/storage/img/'.basename($o['sheet']));if($ba&&$o['file'])@unlink(__DIR__.'/storage/img/'.basename($o['file']));}
+ if($o){if($o['sheet'])@unlink(DATA.'/img/'.basename($o['sheet']));if($ba&&$o['file'])@unlink(DATA.'/img/'.basename($o['file']));}
  $tc=txtCode(ty($d));if($tc&&$c===$tc&&isset($_POST['desc']))db()->prepare('UPDATE dossiers SET description=? WHERE id=?')->execute([mb_substr((string)$_POST['desc'],0,4000),$d['id']]);
  if($c!==ty($d).'0'&&$c!==$tc)flash('success','Étape '.$c.' enregistrée.');
  echo '{"ok":1}';exit;}
 
-if($a==='img'||$a==='sheet'){$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$c=(string)($_GET['c']??'');$f=$p[$c][$a==='img'?'file':'sheet']??null;if(!$f)exit;$path=__DIR__.'/storage/img/'.basename($f);
+if($a==='img'||$a==='sheet'){$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$c=(string)($_GET['c']??'');$f=$p[$c][$a==='img'?'file':'sheet']??null;if(!$f)exit;$path=DATA.'/img/'.basename($f);
  header('Content-Type: image/jpeg');header('Cache-Control: private, max-age=60');
  if($a==='sheet'&&$d['status']!=='paye'&&($im=@imagecreatefromjpeg($path))){watermark($im,imagesx($im),imagesy($im),'BROUILLON');imagejpeg($im,null,85);imagedestroy($im);exit;}
  readfile($path);exit;}
 
 if($a==='pdf'){try{$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$wm=$d['status']!=='paye';$pdf=new MiniPdf;$n=0;
- foreach(codes(ty($d)) as $c){if(empty($p[$c]['sheet']))continue;$path=__DIR__.'/storage/img/'.basename($p[$c]['sheet']);
+ foreach(codes(ty($d)) as $c){if(empty($p[$c]['sheet']))continue;$path=DATA.'/img/'.basename($p[$c]['sheet']);
   if($wm){$im=imagecreatefromjpeg($path);watermark($im,imagesx($im),imagesy($im));ob_start();imagejpeg($im,null,85);imagedestroy($im);$j=ob_get_clean();}else $j=file_get_contents($path);
   $g=getimagesizefromstring($j);$pdf->add($j,$g[0],$g[1]);$n++;}
  if(!$n)throw new Exception('Aucune planche : ouvrez les éditeurs et enregistrez chaque étape.');
@@ -121,14 +121,14 @@ if($a==='pdf'){try{$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$w
  catch(Throwable $x){error_log((string)$x);flash('danger','Génération du PDF impossible : '.$x->getMessage());go('dossier','&id='.(int)($_GET['id']??0));}}
 
 if($a==='lib'){header('Content-Type: application/json');$s=db()->prepare('SELECT id,name,wcm,hcm,shared,(user_id=?) AS mine FROM library WHERE user_id=? OR shared=1 ORDER BY id DESC');$s->execute([$u['id'],$u['id']]);echo json_encode($s->fetchAll());exit;}
-if($a==='libimg'){$s=db()->prepare('SELECT * FROM library WHERE id=? AND (user_id=? OR shared=1)');$s->execute([(int)($_GET['id']??0),$u['id']]);$r=$s->fetch();if(!$r){http_response_code(404);exit;}header('Content-Type: image/png');header('Cache-Control: private, max-age=86400');readfile(__DIR__.'/storage/lib/'.basename($r['file']));exit;}
-if($a==='libdel'&&$post){$s=db()->prepare('SELECT * FROM library WHERE id=?');$s->execute([(int)($_POST['id']??0)]);$r=$s->fetch();if($r&&($r['user_id']==$u['id']||$u['role']==='admin')){@unlink(__DIR__.'/storage/lib/'.basename($r['file']));db()->prepare('DELETE FROM library WHERE id=?')->execute([$r['id']]);}echo '{"ok":1}';exit;}
+if($a==='libimg'){$s=db()->prepare('SELECT * FROM library WHERE id=? AND (user_id=? OR shared=1)');$s->execute([(int)($_GET['id']??0),$u['id']]);$r=$s->fetch();if(!$r){http_response_code(404);exit;}header('Content-Type: image/png');header('Cache-Control: private, max-age=86400');readfile(DATA.'/lib/'.basename($r['file']));exit;}
+if($a==='libdel'&&$post){$s=db()->prepare('SELECT * FROM library WHERE id=?');$s->execute([(int)($_POST['id']??0)]);$r=$s->fetch();if($r&&($r['user_id']==$u['id']||$u['role']==='admin')){@unlink(DATA.'/lib/'.basename($r['file']));db()->prepare('DELETE FROM library WHERE id=?')->execute([$r['id']]);}echo '{"ok":1}';exit;}
 if($a==='libsave'&&$post){header('Content-Type: application/json');$f=$_FILES['png']??null;
  if(!$f||$f['error']!==0||$f['size']>4*1048576){echo '{"ok":0,"err":"fichier refusé"}';exit;}
  $raw=file_get_contents($f['tmp_name']);if((new finfo(FILEINFO_MIME_TYPE))->buffer($raw)!=='image/png'||!($im=@imagecreatefromstring($raw))){echo '{"ok":0,"err":"image invalide"}';exit;}
  $n=db()->prepare('SELECT COUNT(*) FROM library WHERE user_id=?');$n->execute([$u['id']]);if($n->fetchColumn()>=100){echo '{"ok":0,"err":"bibliothèque pleine (100)"}';exit;}
  $k=min(1,1000/max(imagesx($im),imagesy($im)));if($k<1){$t=imagecreatetruecolor((int)(imagesx($im)*$k),(int)(imagesy($im)*$k));imagealphablending($t,false);imagesavealpha($t,true);imagefill($t,0,0,imagecolorallocatealpha($t,0,0,0,127));imagecopyresampled($t,$im,0,0,0,0,imagesx($t),imagesy($t),imagesx($im),imagesy($im));$im=$t;}else{imagealphablending($im,false);imagesavealpha($im,true);}
- $fn=bin2hex(random_bytes(16)).'.png';imagepng($im,__DIR__.'/storage/lib/'.$fn,6);$sh=($u['role']==='admin'&&!empty($_POST['shared']))?1:0;
+ $fn=bin2hex(random_bytes(16)).'.png';imagepng($im,DATA.'/lib/'.$fn,6);$sh=($u['role']==='admin'&&!empty($_POST['shared']))?1:0;
  db()->prepare('INSERT INTO library(user_id,name,file,wcm,hcm,shared,created_at) VALUES(?,?,?,?,?,?,NOW())')->execute([$u['id'],mb_substr(trim((string)($_POST['name']??'Objet')),0,60)?:'Objet',$fn,max(0,min(5000,(int)($_POST['wcm']??0))),max(0,min(5000,(int)($_POST['hcm']??0))),$sh]);
  echo '{"ok":1}';exit;}
 
@@ -155,5 +155,5 @@ if($a==='library'){need(false,true);
  page('Bibliothèque','<div class="ph"><div><h2>Bibliothèque partagée</h2><p class="mu">Les images et émojis ajoutés ici sont proposés à tous les utilisateurs dans l’éditeur.</p></div></div>'
  .'<div class="c"><h3>Images partagées</h3><p class="hp">Fenêtres, portes, enseignes, arbres, véhicules… Importez une photo : l’arrière-plan peut être retiré automatiquement.</p><div id="libadm" data-cfg="'.e(json_encode(['t'=>csrf()])).'"></div></div>'
  .'<div class="c"><h3>Émojis et symboles</h3>'.$form('<label>Émojis proposés dans l’éditeur, séparés par des espaces</label><textarea name="emojis" rows="3" style="font-size:22px">'.e(implode(' ',emojis())).'</textarea><button>'.icon('check').'Enregistrer</button>').'</div>','assets/editor.js');exit;}
-if($a==='log'){need(false,true);$f=__DIR__.'/storage/error.log';page('Journal','<h2>Journal d\'erreurs</h2><pre style="white-space:pre-wrap">'.e(is_file($f)?implode('',array_slice(file($f),-30)):'Vide').'</pre>');exit;}
+if($a==='log'){need(false,true);$f=DATA.'/error.log';page('Journal','<h2>Journal d\'erreurs</h2><pre style="white-space:pre-wrap">'.e(is_file($f)?implode('',array_slice(file($f),-30)):'Vide').'</pre>');exit;}
 go('dash');

@@ -10,7 +10,7 @@ let HEAD=['Déclaration préalable','de travaux',''];
 function frame(c,m,code,title){
  c.fillStyle='#fff';c.fillRect(0,0,W,H);c.strokeStyle='#000';c.lineWidth=2;c.strokeRect(40,40,W-80,H-80);
  [[40,1000,W-40,1000],[660,1000,660,H-40],[1100,1000,1100,H-40],[1380,1000,1380,H-40]].forEach(l=>{c.beginPath();c.moveTo(l[0],l[1]);c.lineTo(l[2],l[3]);c.stroke();});
- c.fillStyle='#eef1f6';c.fillRect(41,1001,W-82,127);c.fillStyle='#1f4fd8';c.fillRect(1380,1001,W-1421,127);c.fillRect(41,1001,10,127);c.fillStyle='#14213d';c.textBaseline='top';c.textAlign='left';c.font='bold 30px Arial';c.fillText(fit(c,HEAD[0].toUpperCase(),580),68,1018);c.fillText(fit(c,HEAD[1].toUpperCase(),580),68,1056);
+ c.fillStyle='#eef1f6';c.fillRect(41,1001,W-82,127);c.fillStyle='#0d3466';c.fillRect(1380,1001,W-1421,127);c.fillStyle='#2e8b45';c.fillRect(41,1001,10,127);c.fillStyle='#14213d';c.textBaseline='top';c.textAlign='left';c.font='bold 30px Arial';c.fillText(fit(c,HEAD[0].toUpperCase(),580),68,1018);c.fillText(fit(c,HEAD[1].toUpperCase(),580),68,1056);
  c.font='15px Arial';c.fillText('Ces documents ne se substituent pas aux plans d’exécution.',68,1104);
  c.font='20px Arial';[['Propriétaire : '+m.owner],['Projet : '+m.titre],['Adresse : '+m.adresse],['Parcelle n° '+m.parcelle]].forEach((t,i)=>c.fillText(fit(c,t[0],410),680,1012+i*29));
  c.font='bold 21px Arial';wrap(c,title,1118,1014,250,26);c.font='18px Arial';c.fillText(new Date().toLocaleDateString('fr-FR'),1118,1100);
@@ -168,10 +168,10 @@ function editor(root,cfg){
  if(cfg.base){const i=new Image();i.onload=()=>{img=i;draw();};i.src='index.php?a=img&id='+cfg.id+'&c='+cfg.c;}
  draw();}
 
-function cover(c,m,list){c.fillStyle='#1f4fd8';c.fillRect(41,41,W-82,250);c.fillStyle='#fff';c.textBaseline='top';c.font='bold 66px Arial';c.fillText(HEAD[0],90,80);c.fillText(HEAD[1],90,160);c.font='26px Arial';c.fillText(HEAD[2]||'Dossier de demande déposé auprès de la mairie',90,244);
+function cover(c,m,list){c.fillStyle='#0d3466';c.fillRect(41,41,W-82,250);c.fillStyle='#fff';c.textBaseline='top';c.font='bold 66px Arial';c.fillText(HEAD[0],90,80);c.fillText(HEAD[1],90,160);c.font='26px Arial';c.fillText(HEAD[2]||'Dossier de demande déposé auprès de la mairie',90,244);
  c.fillStyle='#14213d';c.font='bold 44px Arial';wrap(c,m.titre,90,340,W-180,56);c.font='28px Arial';c.fillStyle='#5b6678';c.fillText('Adresse du projet : '+fit(c,m.adresse,1100),90,470);c.fillText('Parcelle cadastrée n° '+m.parcelle,90,512);c.fillText('Déclarant : '+m.owner,90,554);
  c.fillStyle='#14213d';c.font='bold 30px Arial';c.fillText('Pièces du dossier',90,640);c.fillRect(90,682,W-180,2);
- const lh=list.length>6?31:44;list.forEach((t,i)=>{const x=90,y=704+i*lh;c.fillStyle='#1f4fd8';c.fillRect(x,y+6,14,14);c.fillStyle='#14213d';c.font='25px Arial';c.fillText(fit(c,t,W-220),x+30,y);});}
+ const lh=list.length>6?31:44;list.forEach((t,i)=>{const x=90,y=704+i*lh;c.fillStyle='#2e8b45';c.fillRect(x,y+6,14,14);c.fillStyle='#14213d';c.font='25px Arial';c.fillText(fit(c,t,W-220),x+30,y);});}
 function auto(a){const cfg=JSON.parse(a.dataset.cfg);if(!cfg.edit)return;
  const prep=async()=>{const ta=document.querySelector('textarea[name=description]'),desc=ta?ta.value:(cfg.desc||''),cv=el('canvas',{width:W,height:H}),c=cv.getContext('2d');
   const cv0=cfg.ty+'0';const up=async(code,title,lines,d)=>{frame(c,cfg.meta,code,title);if(code===cv0)cover(c,cfg.meta,cfg.list);else{c.fillStyle='#14213d';c.textBaseline='top';c.font='28px Arial';let y=80;lines.forEach(t=>{y=wrap(c,t,80,y,W-160,40);});}
