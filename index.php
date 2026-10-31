@@ -80,7 +80,7 @@ if($a==='dossier'){
  $h='<div class="ph"><div><h2>'.e($d['titre']).'</h2><p class="mu"><span class="tk">'.$ty.'</span> '.e(TYPES[$ty][0]).' · '.e($d['adresse']).' – parcelle '.e($d['parcelle']).'</p></div>'.badge($d['status']).'</div><div class="steps">';
  [$cn,$cu]=CERFA[$ty];$h.='<div class="c cerfa"><b>Cerfa n°'.$cn.'</b> – Formulaire officiel<p class="hp">Téléchargez le formulaire, imprimez-le et remplissez-le au stylo. Il se dépose en mairie avec les pièces ci-dessous.</p><a class="b" href="'.e($cu).'" target="_blank" rel="noopener">'.icon('dl').'Accéder au Cerfa et le télécharger ↗</a></div>';
  foreach(steps($ty) as $c=>[$t,$k,$hp,$opt]){$h.='<div class="c"><b>'.$c.'</b> – '.e($t).' '.($opt?'<span class="badge b-mu">Facultatif</span> ':'');
-  if($k==='img'){$ok=!empty($p[$c]['sheet']);$h.=($ok?'<span class="ok">✔</span>':($opt?'':'<span class="er">à compléter</span>')).'<p class="hp">'.e($hp).'</p>'.($ok?'<img src="index.php?a=sheet&id='.$d['id'].'&c='.$c.'" style="max-width:320px;border:1px solid #ddd">':'');
+  if($k==='img'){$ok=!empty($p[$c]['sheet']);$h.=($ok?'<span class="ok">✔</span>':($opt?'':'<span class="er">à compléter</span>')).'<p class="hp">'.e($hp).'</p>'.($ok?'<img src="index.php?a=sheet&id='.$d['id'].'&c='.$c.'&s='.$d['status'].'" style="max-width:320px;border:1px solid #ddd">':'');
    if($edit)$h.='<br><a class="b" style="margin-top:8px" href="index.php?a=edit&id='.$d['id'].'&c='.$c.'">'.icon('edit').($ok?'Modifier dans l\'éditeur':'Ouvrir l\'éditeur').'</a>';}
   else{$h.='<p class="hp">'.e($hp).'</p>';$h.=$edit?$form('<textarea name="description" rows="6" placeholder="'.($ty==='PD'?'Décrivez les précautions prises pendant la démolition…':'Décrivez vos travaux : matériaux, couleurs, dimensions…').'">'.e($d['description']).'</textarea><button>Enregistrer</button>'):'<p>'.nl2br(e($d['description'])).'</p>';}
   $h.='</div>';}
@@ -93,7 +93,7 @@ $h.='</div><p style="margin-top:18px"><a class="b pdfgo" href="index.php?a=pdf&i
 
 if($a==='edit'){$d=dossier((int)($_GET['id']??0));$c=(string)($_GET['c']??'');$ty=ty($d);$st=steps($ty)[$c]??null;
  if($u['id']!=$d['user_id']||$d['status']!=='brouillon'||!$st||$st[1]!=='img'){http_response_code(403);exit('Refusé');}
- $p=pieces((int)$d['id']);$cfg=['id'=>$d['id'],'c'=>$c,'t'=>csrf(),'admin'=>$u['role']==='admin','title'=>mb_strtoupper($st[0]),'head'=>HEAD[$ty],'base'=>!empty($p[$c]['file']),'data'=>json_decode((string)($p[$c]['data']??'null')),'meta'=>['titre'=>$d['titre'],'adresse'=>$d['adresse'],'parcelle'=>$d['parcelle'],'owner'=>$u['name']]];
+ $p=pieces((int)$d['id']);$cfg=['id'=>$d['id'],'c'=>$c,'t'=>csrf(),'admin'=>$u['role']==='admin','title'=>mb_strtoupper($st[0]),'head'=>HEAD[$ty],'wm'=>true,'emojis'=>emojis(),'base'=>!empty($p[$c]['file']),'data'=>json_decode((string)($p[$c]['data']??'null')),'meta'=>['titre'=>$d['titre'],'adresse'=>$d['adresse'],'parcelle'=>$d['parcelle'],'owner'=>$u['name']]];
  page('Éditeur '.$c,'<h2>'.$c.' – '.e($st[0]).'</h2><p class="hp">'.e($st[2]).'</p><div id="ed" data-cfg="'.e(json_encode($cfg)).'"></div>','assets/editor.js');exit;}
 
 if($a==='save'&&$post){header('Content-Type: application/json');$d=dossier((int)($_POST['id']??0));$c=(string)($_POST['c']??'');
@@ -107,8 +107,10 @@ if($a==='save'&&$post){header('Content-Type: application/json');$d=dossier((int)
  if($c!==ty($d).'0'&&$c!==$tc)flash('success','Étape '.$c.' enregistrée.');
  echo '{"ok":1}';exit;}
 
-if($a==='img'||$a==='sheet'){$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$c=(string)($_GET['c']??'');$f=$p[$c][$a==='img'?'file':'sheet']??null;if(!$f)exit;
- header('Content-Type: image/jpeg');header('Cache-Control: private, max-age=60');readfile(__DIR__.'/storage/img/'.basename($f));exit;}
+if($a==='img'||$a==='sheet'){$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$c=(string)($_GET['c']??'');$f=$p[$c][$a==='img'?'file':'sheet']??null;if(!$f)exit;$path=__DIR__.'/storage/img/'.basename($f);
+ header('Content-Type: image/jpeg');header('Cache-Control: private, max-age=60');
+ if($a==='sheet'&&$d['status']!=='paye'&&($im=@imagecreatefromjpeg($path))){watermark($im,imagesx($im),imagesy($im),'BROUILLON');imagejpeg($im,null,85);imagedestroy($im);exit;}
+ readfile($path);exit;}
 
 if($a==='pdf'){try{$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$wm=$d['status']!=='paye';$pdf=new MiniPdf;$n=0;
  foreach(codes(ty($d)) as $c){if(empty($p[$c]['sheet']))continue;$path=__DIR__.'/storage/img/'.basename($p[$c]['sheet']);
@@ -148,5 +150,10 @@ if($a==='users'){need(false,true);
  $c=db()->prepare("SELECT COUNT(*) FROM users WHERE $w");$c->execute($args);$tot=(int)$c->fetchColumn();$s=db()->prepare("SELECT * FROM users WHERE $w ORDER BY id LIMIT $per OFFSET ".(($pg-1)*$per));$s->execute($args);$r='';
  foreach($s as $x){$r.='<tr><td><b>'.e($x['name']).'</b><br><small>'.e($x['email']).'</small></td><td>'.($x['id']==$u['id']?'<span class="badge b-ok">'.e($x['role']).' (vous)</span>':$form('<input type="hidden" name="id" value="'.$x['id'].'"><div style="display:flex;gap:8px"><select name="role" style="margin:0">'.implode('',array_map(fn($y)=>'<option'.($y===$x['role']?' selected':'').'>'.$y.'</option>',['declarant','gestionnaire','admin'])).'</select><button>'.icon('check').'Appliquer</button></div>')).'</td><td>'.e(substr($x['created_at'],0,10)).'</td></tr>';}
  page('Utilisateurs','<div class="ph"><div><h2>Utilisateurs</h2><p class="mu">Attribuez les rôles : le gestionnaire valide les paiements, l’administrateur gère tout.</p></div></div>'.tools('users',$q,'','Nom ou e-mail…',false).'<div class="c" style="padding:0;overflow:auto"><table><tr><th>Utilisateur</th><th>Rôle</th><th>Inscrit le</th></tr>'.$r.'</table></div>'.pager($tot,$per,$pg,'index.php?a=users&q='.urlencode($q)));exit;}
+if($a==='library'){need(false,true);
+ if($post&&isset($_POST['emojis'])){setSetting('emojis',mb_substr(trim((string)preg_replace('/\s+/u',' ',(string)$_POST['emojis'])),0,1000));flash('success','Liste des émojis enregistrée.');go('library');}
+ page('Bibliothèque','<div class="ph"><div><h2>Bibliothèque partagée</h2><p class="mu">Les images et émojis ajoutés ici sont proposés à tous les utilisateurs dans l’éditeur.</p></div></div>'
+ .'<div class="c"><h3>Images partagées</h3><p class="hp">Fenêtres, portes, enseignes, arbres, véhicules… Importez une photo : l’arrière-plan peut être retiré automatiquement.</p><div id="libadm" data-cfg="'.e(json_encode(['t'=>csrf()])).'"></div></div>'
+ .'<div class="c"><h3>Émojis et symboles</h3>'.$form('<label>Émojis proposés dans l’éditeur, séparés par des espaces</label><textarea name="emojis" rows="3" style="font-size:22px">'.e(implode(' ',emojis())).'</textarea><button>'.icon('check').'Enregistrer</button>').'</div>','assets/editor.js');exit;}
 if($a==='log'){need(false,true);$f=__DIR__.'/storage/error.log';page('Journal','<h2>Journal d\'erreurs</h2><pre style="white-space:pre-wrap">'.e(is_file($f)?implode('',array_slice(file($f),-30)):'Vide').'</pre>');exit;}
 go('dash');
