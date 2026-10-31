@@ -20,17 +20,17 @@ if($a==='login'||$a==='register'){
 $u=need();
 
 if($a==='dash'){
- if($post&&isset($_POST['titre'])){$s=db()->prepare('INSERT INTO dossiers(user_id,titre,adresse,parcelle,created_at) VALUES(?,?,?,?,NOW())');$s->execute([$u['id'],mb_substr(trim((string)$_POST['titre']),0,150),mb_substr(trim((string)$_POST['adresse']),0,255),mb_substr(trim((string)$_POST['parcelle']),0,40)]);flash('success','Dossier créé : complétez les étapes une par une.');go('dossier','&id='.db()->lastInsertId());}
+ if($post&&isset($_POST['titre'])){$tp=(string)($_POST['type']??'DP');if(!isset(STEPS[$tp]))$tp='DP';$s=db()->prepare('INSERT INTO dossiers(user_id,type,titre,adresse,parcelle,created_at) VALUES(?,?,?,?,?,NOW())');$s->execute([$u['id'],$tp,mb_substr(trim((string)$_POST['titre']),0,150),mb_substr(trim((string)$_POST['adresse']),0,255),mb_substr(trim((string)$_POST['parcelle']),0,40)]);flash('success','Dossier créé : complétez les étapes une par une.');go('dossier','&id='.db()->lastInsertId());}
  $q=trim((string)($_GET['q']??''));$st=(string)($_GET['st']??'');$pg=max(1,(int)($_GET['p']??1));$per=9;$w='user_id=?';$args=[$u['id']];
  if($q!==''){$w.=' AND (titre LIKE ? OR adresse LIKE ?)';array_push($args,"%$q%","%$q%");}
  if(in_array($st,['brouillon','en_attente','paye'],true)){$w.=' AND status=?';$args[]=$st;}
  $c=db()->prepare("SELECT COUNT(*) FROM dossiers WHERE $w");$c->execute($args);$tot=(int)$c->fetchColumn();
- $s=db()->prepare("SELECT *,(SELECT COUNT(*) FROM pieces p WHERE p.dossier_id=dossiers.id AND p.sheet IS NOT NULL AND p.code IN ('".implode("','",reqImg())."')) AS done FROM dossiers WHERE $w ORDER BY id DESC LIMIT $per OFFSET ".(($pg-1)*$per));$s->execute($args);$h='';$nr=count(reqImg());
- foreach($s as $d)$h.='<a class="dc" href="index.php?a=dossier&id='.$d['id'].'"><div class="l"><div class="ph" style="margin:0"><b>'.e($d['titre']).'</b>'.badge($d['status']).'</div><span class="mu">'.e($d['adresse']).'</span><div class="bar"><i style="width:'.round($d['done']/$nr*100).'%"></i></div><small>'.(int)$d['done'].' / '.$nr.' pièces obligatoires complétées</small></div><div class="r">DP</div></a>';
+ $s=db()->prepare("SELECT *,(SELECT COUNT(*) FROM pieces p WHERE p.dossier_id=dossiers.id AND p.sheet IS NOT NULL AND p.code IN ('".implode("','",reqImg())."')) AS done FROM dossiers WHERE $w ORDER BY id DESC LIMIT $per OFFSET ".(($pg-1)*$per));$s->execute($args);$h='';
+ foreach($s as $d){$nr=count(reqImg(ty($d)));$h.='<a class="dc" href="index.php?a=dossier&id='.$d['id'].'"><div class="l"><div class="ph" style="margin:0"><b>'.e($d['titre']).'</b>'.badge($d['status']).'</div><span class="mu">'.e($d['adresse']).'</span><div class="bar"><i style="width:'.round($d['done']/$nr*100).'%"></i></div><small>'.(int)$d['done'].' / '.$nr.' pièces obligatoires complétées</small></div><div class="r" title="'.e(TYPES[ty($d)][0]).'">'.ty($d).'</div></a>';}
  $n=db()->prepare('SELECT status,COUNT(*) FROM dossiers WHERE user_id=? GROUP BY status');$n->execute([$u['id']]);
  page('Accueil','<div class="c hero"><div><h2>Bienvenue sur '.APP.'</h2><p class="mu">Constituez vous-même votre dossier de demande d’autorisation d’urbanisme, étape par étape.</p></div><a class="btn" href="'.e(ZONE).'" target="_blank" rel="noopener">'.icon('search').'Voir dans quelle zone se trouve votre parcelle ↗</a></div>'
- .'<div class="ph"><div><h2>Mes dossiers</h2><p class="mu">Constituez et suivez vos déclarations préalables de travaux.</p></div></div>'.stats($n->fetchAll(PDO::FETCH_KEY_PAIR))
- .'<details class="c" id="new"'.(isset($_GET['new'])?' open':'').'><summary class="btn">'.icon('plus').'Nouvelle déclaration préalable (DP)</summary><div style="margin-top:14px">'.$form('<label>Intitulé du projet</label><input name="titre" placeholder="Ex : Aménagement des combles" required><label>Adresse du projet</label><input name="adresse" required><label>Numéro de parcelle</label><input name="parcelle" required><button>'.icon('check').'Créer le dossier</button>').'</div></details>'
+ .'<div class="ph"><div><h2>Mes dossiers</h2><p class="mu">Constituez et suivez vos dossiers d’urbanisme.</p></div></div>'.stats($n->fetchAll(PDO::FETCH_KEY_PAIR))
+ .'<details class="c" id="new"'.(isset($_GET['new'])?' open':'').'><summary class="btn">'.icon('plus').'Nouveau dossier</summary><div style="margin-top:14px">'.$form('<label>Type de dossier</label><select name="type">'.implode('',array_map(fn($k)=>'<option value="'.$k.'"'.(($_GET['new']??'')===$k?' selected':'').'>'.e(TYPES[$k][0]).' ('.$k.')</option>',array_keys(STEPS))).'</select><label>Intitulé du projet</label><input name="titre" placeholder="Ex : Aménagement des combles" required><label>Adresse du projet</label><input name="adresse" required><label>Numéro de parcelle</label><input name="parcelle" required><button>'.icon('check').'Créer le dossier</button>').'</div></details>'
  .tools('dash',$q,$st,'Rechercher par intitulé ou adresse…').($h?'<div class="grid">'.$h.'</div>':'<div class="c empty">'.icon('file').'<p>'.($q!==''||$st!==''?'Aucun dossier ne correspond à votre recherche.':'Aucun dossier pour le moment. Créez-en un pour commencer.').'</p></div>').pager($tot,$per,$pg,'index.php?a=dash&q='.urlencode($q).'&st='.urlencode($st)));exit;}
 
 if($a==='notifs'){
@@ -71,18 +71,18 @@ if($a==='deldoss'&&$post){$d=dossier((int)($_POST['id']??0));$mine=$u['id']==$d[
  flash('danger','Suppression impossible : un dossier payé ne peut pas être supprimé.');go('dossier','&id='.$d['id']);}
 
 if($a==='dossier'){
- $d=dossier((int)($_GET['id']??0));$own=$u['id']==$d['user_id'];$edit=$own&&$d['status']==='brouillon';
- if($post&&$edit){if(isset($_POST['description'])){db()->prepare('UPDATE dossiers SET description=? WHERE id=?')->execute([mb_substr((string)$_POST['description'],0,4000),$d['id']]);db()->prepare("UPDATE pieces SET sheet=NULL WHERE dossier_id=? AND code='DP11'")->execute([$d['id']]);flash('success','Description enregistrée.');}
+ $d=dossier((int)($_GET['id']??0));$own=$u['id']==$d['user_id'];$edit=$own&&$d['status']==='brouillon';$ty=ty($d);$tc=txtCode($ty);
+ if($post&&$edit){if(isset($_POST['description'])){db()->prepare('UPDATE dossiers SET description=? WHERE id=?')->execute([mb_substr((string)$_POST['description'],0,4000),$d['id']]);db()->prepare("UPDATE pieces SET sheet=NULL WHERE dossier_id=? AND code=?")->execute([$d['id'],(string)$tc]);flash('success','Description enregistrée.');}
   if(isset($_POST['go_submit'])){if(complete(dossier((int)$d['id']),pieces((int)$d['id']))){db()->prepare("UPDATE dossiers SET status='en_attente' WHERE id=?")->execute([$d['id']]);flash('success','Dossier soumis : il sera ouvert dès la validation de votre paiement.');notifyStaff('Nouveau dossier soumis : '.$d['titre'].' ('.$u['name'].')','a=dossier&id='.(int)$d['id']);}else flash('danger','Le dossier est incomplet : complétez toutes les étapes.');}
   go('dossier','&id='.$d['id']);}
- $d=dossier((int)$d['id']);$p=pieces((int)$d['id']);$list=[];foreach(STEPS as $c=>[$t,$k,,$opt])if(!$opt||!empty($p[$c]['sheet']))$list[]="$c : $t";
- $cfg=['id'=>$d['id'],'t'=>csrf(),'edit'=>$edit,'desc'=>$d['description'],'list'=>$list,'meta'=>['titre'=>$d['titre'],'adresse'=>$d['adresse'],'parcelle'=>$d['parcelle'],'owner'=>$own?$u['name']:'']];
- $h='<div class="ph"><div><h2>'.e($d['titre']).'</h2><p class="mu">'.e($d['adresse']).' – parcelle '.e($d['parcelle']).'</p></div>'.badge($d['status']).'</div><div class="steps">';
- [$cn,$cu]=CERFA['DP'];$h.='<div class="c cerfa"><b>Cerfa n°'.$cn.'</b> – Formulaire officiel<p class="hp">Téléchargez le formulaire, imprimez-le et remplissez-le au stylo. Il se dépose en mairie avec les pièces ci-dessous.</p><a class="b" href="'.e($cu).'" target="_blank" rel="noopener">'.icon('dl').'Accéder au Cerfa et le télécharger ↗</a></div>';
- foreach(STEPS as $c=>[$t,$k,$hp,$opt]){$h.='<div class="c"><b>'.$c.'</b> – '.e($t).' '.($opt?'<span class="badge b-mu">Facultatif</span> ':'');
+ $d=dossier((int)$d['id']);$p=pieces((int)$d['id']);$list=[];foreach(steps($ty) as $c=>[$t,$k,,$opt])if(!$opt||!empty($p[$c]['sheet']))$list[]="$c : $t";
+ $cfg=['id'=>$d['id'],'t'=>csrf(),'edit'=>$edit,'ty'=>$ty,'head'=>HEAD[$ty],'txt'=>$tc?[$tc,mb_strtoupper(steps($ty)[$tc][0])]:null,'desc'=>$d['description'],'list'=>$list,'meta'=>['titre'=>$d['titre'],'adresse'=>$d['adresse'],'parcelle'=>$d['parcelle'],'owner'=>$own?$u['name']:'']];
+ $h='<div class="ph"><div><h2>'.e($d['titre']).'</h2><p class="mu"><span class="tk">'.$ty.'</span> '.e(TYPES[$ty][0]).' · '.e($d['adresse']).' – parcelle '.e($d['parcelle']).'</p></div>'.badge($d['status']).'</div><div class="steps">';
+ [$cn,$cu]=CERFA[$ty];$h.='<div class="c cerfa"><b>Cerfa n°'.$cn.'</b> – Formulaire officiel<p class="hp">Téléchargez le formulaire, imprimez-le et remplissez-le au stylo. Il se dépose en mairie avec les pièces ci-dessous.</p><a class="b" href="'.e($cu).'" target="_blank" rel="noopener">'.icon('dl').'Accéder au Cerfa et le télécharger ↗</a></div>';
+ foreach(steps($ty) as $c=>[$t,$k,$hp,$opt]){$h.='<div class="c"><b>'.$c.'</b> – '.e($t).' '.($opt?'<span class="badge b-mu">Facultatif</span> ':'');
   if($k==='img'){$ok=!empty($p[$c]['sheet']);$h.=($ok?'<span class="ok">✔</span>':($opt?'':'<span class="er">à compléter</span>')).'<p class="hp">'.e($hp).'</p>'.($ok?'<img src="index.php?a=sheet&id='.$d['id'].'&c='.$c.'" style="max-width:320px;border:1px solid #ddd">':'');
    if($edit)$h.='<br><a class="b" style="margin-top:8px" href="index.php?a=edit&id='.$d['id'].'&c='.$c.'">'.icon('edit').($ok?'Modifier dans l\'éditeur':'Ouvrir l\'éditeur').'</a>';}
-  else{$h.='<p class="hp">'.e($hp).'</p>';$h.=$edit?$form('<textarea name="description" rows="6" placeholder="Décrivez vos travaux : matériaux, couleurs, dimensions…">'.e($d['description']).'</textarea><button>Enregistrer</button>'):'<p>'.nl2br(e($d['description'])).'</p>';}
+  else{$h.='<p class="hp">'.e($hp).'</p>';$h.=$edit?$form('<textarea name="description" rows="6" placeholder="'.($ty==='PD'?'Décrivez les précautions prises pendant la démolition…':'Décrivez vos travaux : matériaux, couleurs, dimensions…').'">'.e($d['description']).'</textarea><button>Enregistrer</button>'):'<p>'.nl2br(e($d['description'])).'</p>';}
   $h.='</div>';}
 $h.='</div><p style="margin-top:18px"><a class="b pdfgo" href="index.php?a=pdf&id='.$d['id'].'">'.icon('dl').($d['status']==='paye'?'Télécharger le PDF complet':'Aperçu PDF (filigrané)').'</a> ';
  if($edit){$mi=array_diff(missing($d,$p),['PDF']);$h.=$mi?'<p class="mu">Pièces obligatoires à compléter avant l\'envoi : '.e(implode(', ',$mi)).'</p>':$form('<input type="hidden" name="go_submit" value="1"><button class="submitgo">Soumettre le dossier pour validation</button>');}
@@ -91,31 +91,31 @@ $h.='</div><p style="margin-top:18px"><a class="b pdfgo" href="index.php?a=pdf&i
  if(($own&&$d['status']!=='paye')||$u['role']==='admin')$act.=$pf('deldoss','<button class="danger" data-type="danger" data-ok="Supprimer" data-confirm="Supprimer définitivement ce dossier et toutes ses pièces ? Cette action est irréversible.">'.icon('trash').'Supprimer le dossier</button>');
  page($d['titre'],$h.'</p>'.($act?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'.$act.'</div>':'').'<div id="auto" data-cfg="'.e(json_encode($cfg)).'"></div>','assets/editor.js');exit;}
 
-if($a==='edit'){$d=dossier((int)($_GET['id']??0));$c=(string)($_GET['c']??'');
- if($u['id']!=$d['user_id']||$d['status']!=='brouillon'||!isset(STEPS[$c])||STEPS[$c][1]!=='img'){http_response_code(403);exit('Refusé');}
- $p=pieces((int)$d['id']);$cfg=['id'=>$d['id'],'c'=>$c,'t'=>csrf(),'admin'=>$u['role']==='admin','title'=>mb_strtoupper(STEPS[$c][0]),'base'=>!empty($p[$c]['file']),'data'=>json_decode((string)($p[$c]['data']??'null')),'meta'=>['titre'=>$d['titre'],'adresse'=>$d['adresse'],'parcelle'=>$d['parcelle'],'owner'=>$u['name']]];
- page('Éditeur '.$c,'<h2>'.$c.' – '.e(STEPS[$c][0]).'</h2><p class="hp">'.e(STEPS[$c][2]).'</p><div id="ed" data-cfg="'.e(json_encode($cfg)).'"></div>','assets/editor.js');exit;}
+if($a==='edit'){$d=dossier((int)($_GET['id']??0));$c=(string)($_GET['c']??'');$ty=ty($d);$st=steps($ty)[$c]??null;
+ if($u['id']!=$d['user_id']||$d['status']!=='brouillon'||!$st||$st[1]!=='img'){http_response_code(403);exit('Refusé');}
+ $p=pieces((int)$d['id']);$cfg=['id'=>$d['id'],'c'=>$c,'t'=>csrf(),'admin'=>$u['role']==='admin','title'=>mb_strtoupper($st[0]),'head'=>HEAD[$ty],'base'=>!empty($p[$c]['file']),'data'=>json_decode((string)($p[$c]['data']??'null')),'meta'=>['titre'=>$d['titre'],'adresse'=>$d['adresse'],'parcelle'=>$d['parcelle'],'owner'=>$u['name']]];
+ page('Éditeur '.$c,'<h2>'.$c.' – '.e($st[0]).'</h2><p class="hp">'.e($st[2]).'</p><div id="ed" data-cfg="'.e(json_encode($cfg)).'"></div>','assets/editor.js');exit;}
 
 if($a==='save'&&$post){header('Content-Type: application/json');$d=dossier((int)($_POST['id']??0));$c=(string)($_POST['c']??'');
- if($u['id']!=$d['user_id']||$d['status']!=='brouillon'||!in_array($c,PIECES,true)){http_response_code(403);echo '{"ok":0,"err":"refusé"}';exit;}
+ if($u['id']!=$d['user_id']||$d['status']!=='brouillon'||!in_array($c,codes(ty($d)),true)){http_response_code(403);echo '{"ok":0,"err":"refusé"}';exit;}
  $sh=savejpeg($_FILES['sheet']??null,1700);$ba=savejpeg($_FILES['base']??null,2400);$data=(string)($_POST['data']??'{}');
  if(!$sh||strlen($data)>200000||json_decode($data)===null){echo '{"ok":0,"err":"données invalides"}';exit;}
  $o=pieces((int)$d['id'])[$c]??null;
  db()->prepare('INSERT INTO pieces(dossier_id,code,file,sheet,data) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE file=COALESCE(VALUES(file),file),sheet=VALUES(sheet),data=VALUES(data)')->execute([$d['id'],$c,$ba,$sh,$data]);
  if($o){if($o['sheet'])@unlink(__DIR__.'/storage/img/'.basename($o['sheet']));if($ba&&$o['file'])@unlink(__DIR__.'/storage/img/'.basename($o['file']));}
- if($c==='DP11'&&isset($_POST['desc']))db()->prepare('UPDATE dossiers SET description=? WHERE id=?')->execute([mb_substr((string)$_POST['desc'],0,4000),$d['id']]);
- if(!in_array($c,['DP0','DP11'],true))flash('success','Étape '.$c.' enregistrée.');
+ $tc=txtCode(ty($d));if($tc&&$c===$tc&&isset($_POST['desc']))db()->prepare('UPDATE dossiers SET description=? WHERE id=?')->execute([mb_substr((string)$_POST['desc'],0,4000),$d['id']]);
+ if($c!==ty($d).'0'&&$c!==$tc)flash('success','Étape '.$c.' enregistrée.');
  echo '{"ok":1}';exit;}
 
 if($a==='img'||$a==='sheet'){$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$c=(string)($_GET['c']??'');$f=$p[$c][$a==='img'?'file':'sheet']??null;if(!$f)exit;
  header('Content-Type: image/jpeg');header('Cache-Control: private, max-age=60');readfile(__DIR__.'/storage/img/'.basename($f));exit;}
 
 if($a==='pdf'){try{$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$wm=$d['status']!=='paye';$pdf=new MiniPdf;$n=0;
- foreach(PIECES as $c){if(empty($p[$c]['sheet']))continue;$path=__DIR__.'/storage/img/'.basename($p[$c]['sheet']);
+ foreach(codes(ty($d)) as $c){if(empty($p[$c]['sheet']))continue;$path=__DIR__.'/storage/img/'.basename($p[$c]['sheet']);
   if($wm){$im=imagecreatefromjpeg($path);watermark($im,imagesx($im),imagesy($im));ob_start();imagejpeg($im,null,85);imagedestroy($im);$j=ob_get_clean();}else $j=file_get_contents($path);
   $g=getimagesizefromstring($j);$pdf->add($j,$g[0],$g[1]);$n++;}
  if(!$n)throw new Exception('Aucune planche : ouvrez les éditeurs et enregistrez chaque étape.');
- $out=$pdf->out();header('Content-Type: application/pdf');header('Content-Disposition: attachment; filename="DOSSIERUrba-DP-'.(int)$d['id'].($wm?'-apercu':'').'.pdf"');header('Cache-Control: private, no-store');echo $out;exit;}
+ $out=$pdf->out();header('Content-Type: application/pdf');header('Content-Disposition: attachment; filename="DOSSIERUrba-'.ty($d).'-'.(int)$d['id'].($wm?'-apercu':'').'.pdf"');header('Cache-Control: private, no-store');echo $out;exit;}
  catch(Throwable $x){error_log((string)$x);flash('danger','Génération du PDF impossible : '.$x->getMessage());go('dossier','&id='.(int)($_GET['id']??0));}}
 
 if($a==='lib'){header('Content-Type: application/json');$s=db()->prepare('SELECT id,name,wcm,hcm,shared,(user_id=?) AS mine FROM library WHERE user_id=? OR shared=1 ORDER BY id DESC');$s->execute([$u['id'],$u['id']]);echo json_encode($s->fetchAll());exit;}
@@ -137,7 +137,7 @@ if($a==='admin'){need(true);
  if(in_array($st,['brouillon','en_attente','paye'],true)){$w.=' AND d.status=?';$args[]=$st;}
  $c=db()->prepare("SELECT COUNT(*) FROM dossiers d JOIN users u ON u.id=d.user_id WHERE $w");$c->execute($args);$tot=(int)$c->fetchColumn();
  $s=db()->prepare("SELECT d.*,u.name,u.email FROM dossiers d JOIN users u ON u.id=d.user_id WHERE $w ORDER BY (d.status='en_attente') DESC,d.id DESC LIMIT $per OFFSET ".(($pg-1)*$per));$s->execute($args);$r='';
- foreach($s as $d){$pa=$d['status']==='paye';$r.='<tr><td><a href="index.php?a=dossier&id='.$d['id'].'"><b>'.e($d['titre']).'</b></a><br><small>'.e($d['adresse']).'</small></td><td>'.e($d['name']).'<br><small>'.e($d['email']).'</small></td><td>'.badge($d['status']).'</td><td>'.e(substr($d['created_at'],0,10)).'</td><td>';
+ foreach($s as $d){$pa=$d['status']==='paye';$r.='<tr><td><a href="index.php?a=dossier&id='.$d['id'].'"><b>'.e($d['titre']).'</b></a><br><small><span class="tk">'.ty($d).'</span> '.e($d['adresse']).'</small></td><td>'.e($d['name']).'<br><small>'.e($d['email']).'</small></td><td>'.badge($d['status']).'</td><td>'.e(substr($d['created_at'],0,10)).'</td><td>';
   if($d['status']!=='brouillon')$r.=$form('<input type="hidden" name="id" value="'.$d['id'].'"><input type="hidden" name="st" value="'.($pa?'en_attente':'paye').'"><button class="'.($pa?'ghost':'').'" data-confirm="'.($pa?'Annuler la validation du paiement ?':'Confirmer la réception du paiement ?').'">'.icon($pa?'undo':'check').($pa?'Annuler':'Valider le paiement').'</button>');$r.='</td></tr>';}
  page('Gestion','<div class="ph"><div><h2>Gestion des dossiers</h2><p class="mu">Validez les paiements pour retirer le filigrane et autoriser le téléchargement.</p></div></div>'.stats(db()->query('SELECT status,COUNT(*) FROM dossiers GROUP BY status')->fetchAll(PDO::FETCH_KEY_PAIR)).tools('admin',$q,$st,'Dossier, déclarant ou e-mail…')
  .($r?'<div class="c" style="padding:0;overflow:auto"><table><tr><th>Dossier</th><th>Déclarant</th><th>Statut</th><th>Créé le</th><th></th></tr>'.$r.'</table></div>':'<div class="c empty">Aucun dossier trouvé.</div>').pager($tot,$per,$pg,'index.php?a=admin&q='.urlencode($q).'&st='.urlencode($st)));exit;}

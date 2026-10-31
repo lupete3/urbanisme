@@ -11,23 +11,50 @@ set_exception_handler(function($x){error_log((string)$x);http_response_code(500)
 const APP='DOSSIERUrba';
 const ZONE='https://lazone.kutsh.fr/#14/49.4412/1.0912/base=ign&layers=zone';
 // Types de dossiers : [libellé, disponible, mention si indisponible]
-const TYPES=['DP'=>['Déclaration Préalable',true,''],'AP'=>['Autorisation Préalable',false,'Bientôt'],'PD'=>['Permis de Démolir',false,'Bientôt'],'PC'=>['Permis de Construire',false,'Pas encore disponible'],'PL'=>['Permis de Louer',false,'Pas encore disponible'],'AT'=>['Autorisation de Travaux',false,'Pas encore disponible']];
-// Cerfa officiel : la fiche service-public donne toujours la dernière version
-const CERFA=['DP'=>['16702','https://www.formulaires.service-public.gouv.fr/gf/showFormulaireSignaletiqueConsulter.do?numCerfaAndExtension=16702']];
-const PIECES=['DP0','DP1','DP2','DP3','DP4','DP5','DP6','DP7','DP8','DP11'];
-// Pièces : [titre, type (img|txt), aide, facultative]
-const STEPS=[
- 'DP1'=>['Plan de situation du terrain','img','Situez le terrain avec Google Maps, le cadastre ou Google Earth (vue aérienne). Enregistrez ou capturez l’image de la carte, puis importez-la ici.',false],
- 'DP2'=>['Plan de masse coté dans les 3 dimensions','img','Obligatoire seulement si les travaux augmentent le volume de la maison (extension, surélévation…).',true],
- 'DP3'=>['Plan en coupe','img','Obligatoire seulement pour une nouvelle construction : il précise son implantation par rapport au terrain.',true],
- 'DP4'=>['Plan des façades et des toitures','img','Indiquez la longueur et la largeur des portes et des fenêtres. Vous pouvez aussi dessiner le plan sur une feuille, le prendre en photo et l’importer.',false],
- 'DP5'=>['Représentation de l’aspect extérieur','img','Obligatoire seulement si le plan des façades (DP4) ne suffit pas à montrer l’aspect final.',true],
- 'DP6'=>['Insertion paysagère (photomontage)','img','Montrez le projet terminé dans son environnement, à partir d’une photo.',false],
- 'DP7'=>['Photo rapprochée, sans montage','img','Photo du terrain et de la construction vus de près.',false],
- 'DP8'=>['Photo de loin, sans montage','img','Photo prise de plus loin, qui situe le terrain dans le paysage.',false],
- 'DP11'=>['Notice : matériaux et modalités d’exécution des travaux','txt','Décrivez les matériaux, les couleurs, les dimensions et la façon dont les travaux seront réalisés.',false],
+const TYPES=['DP'=>['Déclaration Préalable',true,''],'AP'=>['Autorisation Préalable',true,''],'PD'=>['Permis de Démolir',true,''],'PC'=>['Permis de Construire',false,'Pas encore disponible'],'PL'=>['Permis de Louer',false,'Pas encore disponible'],'AT'=>['Autorisation de Travaux',false,'Pas encore disponible']];
+// En-tête des planches et de la page de garde : [ligne 1, ligne 2, sous-titre]
+const HEAD=['DP'=>['Déclaration préalable','de travaux','Travaux non soumis à permis de construire'],'AP'=>['Autorisation préalable','enseigne / publicité','Enseigne, préenseigne ou dispositif publicitaire'],'PD'=>['Permis de démolir','','Démolition totale ou partielle d’une construction']];
+// Cerfa officiel : [numéro affiché, lien vers la fiche officielle (dernière version)]
+const CERFA=[
+ 'DP'=>['16702','https://www.formulaires.service-public.gouv.fr/gf/showFormulaireSignaletiqueConsulter.do?numCerfaAndExtension=16702'],
+ 'AP'=>['16308 (remplace le 14798)','https://entreprendre.service-public.gouv.fr/vosdroits/R77838'],
+ 'PD'=>['13405','https://www.formulaires.service-public.gouv.fr/gf/showFormulaireSignaletiqueConsulter.do?numCerfaAndExtension=13405'],
 ];
-function reqImg():array{return array_keys(array_filter(STEPS,fn($s)=>$s[1]==='img'&&!$s[3]));}
+const H_SITU='Situez le terrain avec Google Maps, le cadastre ou Google Earth (vue aérienne). Enregistrez ou capturez l’image de la carte, puis importez-la ici.';
+// Pièces par type : code => [titre, type (img|txt), aide, facultative]
+const STEPS=[
+ 'DP'=>[
+  'DP1'=>['Plan de situation du terrain','img',H_SITU,false],
+  'DP2'=>['Plan de masse coté dans les 3 dimensions','img','Obligatoire seulement si les travaux augmentent le volume de la maison (extension, surélévation…).',true],
+  'DP3'=>['Plan en coupe','img','Obligatoire seulement pour une nouvelle construction : il précise son implantation par rapport au terrain.',true],
+  'DP4'=>['Plan des façades et des toitures','img','Indiquez la longueur et la largeur des portes et des fenêtres. Vous pouvez aussi dessiner le plan sur une feuille, le prendre en photo et l’importer.',false],
+  'DP5'=>['Représentation de l’aspect extérieur','img','Obligatoire seulement si le plan des façades (DP4) ne suffit pas à montrer l’aspect final.',true],
+  'DP6'=>['Insertion paysagère (photomontage)','img','Montrez le projet terminé dans son environnement, à partir d’une photo.',false],
+  'DP7'=>['Photo rapprochée, sans montage','img','Photo du terrain et de la construction vus de près.',false],
+  'DP8'=>['Photo de loin, sans montage','img','Photo prise de plus loin, qui situe le terrain dans le paysage.',false],
+  'DP11'=>['Notice : matériaux et modalités d’exécution des travaux','txt','Décrivez les matériaux, les couleurs, les dimensions et la façon dont les travaux seront réalisés.',false],
+ ],
+ 'AP'=>[
+  'AP1'=>['Plan de situation du terrain','img',H_SITU,false],
+  'AP2'=>['Plan de masse coté','img','Indiquez la longueur, la largeur et la hauteur de l’enseigne à poser.',false],
+  'AP3'=>['Représentation graphique de l’enseigne','img','Dessin ou visuel de l’enseigne avec ses dimensions (texte, logo, couleurs).',false],
+  'AP4'=>['Accord du propriétaire ou du gestionnaire','img','Accord daté et signé du propriétaire ou du gestionnaire du bâtiment : prenez-le en photo et importez-le ici.',false],
+  'AP5'=>['Mise en situation de l’enseigne','img','Photomontage montrant l’enseigne posée sur le bâtiment, comme l’insertion paysagère d’une DP.',false],
+  'AP6.1'=>['Vue de l’immeuble sans l’enseigne','img','Photo actuelle du bâtiment, sans montage.',false],
+  'AP6.2'=>['Vue de l’immeuble avec l’enseigne','img','La même vue que l’AP6.1, avec l’enseigne ajoutée en photomontage.',false],
+ ],
+ 'PD'=>[
+  'PD1'=>['Plan de situation du terrain','img',H_SITU,false],
+  'PD2'=>['Plan de masse des constructions à démolir ou à conserver','img','Entourez les constructions à démolir et, s’il y a lieu, celles qui seront conservées.',false],
+  'PD3'=>['Photographie du ou des bâtiments à démolir','img','Une ou plusieurs photos montrant clairement les bâtiments concernés.',false],
+  'PD9'=>['Descriptif des moyens pour éviter toute atteinte au patrimoine','txt','Expliquez comment la démolition sera menée pour protéger les éléments de patrimoine (bâtiment protégé, secteur sauvegardé…).',false],
+ ],
+];
+function ty(array $d):string{return isset(STEPS[$d['type']??''])?$d['type']:'DP';}
+function steps(string $t):array{return STEPS[$t]??STEPS['DP'];}
+function codes(string $t):array{return array_merge([$t.'0'],array_keys(steps($t)));}
+function txtCode(string $t):?string{foreach(steps($t) as $c=>$s)if($s[1]==='txt')return $c;return null;}
+function reqImg(?string $t=null):array{$r=[];foreach($t?[$t=>steps($t)]:STEPS as $ss)foreach($ss as $c=>$s)if($s[1]==='img'&&!$s[3])$r[]=$c;return $r;}
 function db():PDO{static $p;global $C;return $p??=new PDO("mysql:host={$C['h']};dbname={$C['n']};charset=utf8mb4",$C['u'],$C['p'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);}
 function e($s):string{return htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8');}
 function csrf():string{return $_SESSION['t']??=bin2hex(random_bytes(16));}
@@ -38,7 +65,7 @@ function go(string $a,string $q=''):void{header("Location: index.php?a=$a$q");ex
 function need(bool $staff=false,bool $admin=false):array{$u=me();if(!$u)go('login');if(($staff&&!staff())||($admin&&$u['role']!=='admin')){http_response_code(403);exit('Accès refusé');}return $u;}
 function dossier(int $id):array{$u=need();$s=db()->prepare('SELECT * FROM dossiers WHERE id=?');$s->execute([$id]);$d=$s->fetch();if(!$d||($d['user_id']!=$u['id']&&!staff())){http_response_code(404);exit('Introuvable');}return $d;}
 function pieces(int $id):array{$s=db()->prepare('SELECT code,file,sheet,data FROM pieces WHERE dossier_id=?');$s->execute([$id]);return $s->fetchAll(PDO::FETCH_UNIQUE);}
-function missing(array $d,array $p):array{$m=[];foreach(STEPS as $c=>[$t,$k,,$opt])if(!$opt&&($k==='img'?empty($p[$c]['sheet']):trim((string)$d['description'])===''))$m[]=$c;if(empty($p['DP0']['sheet'])||empty($p['DP11']['sheet']))$m[]='PDF';return $m;}
+function missing(array $d,array $p):array{$m=[];$ty=ty($d);foreach(steps($ty) as $c=>[$t,$k,,$opt])if(!$opt&&($k==='img'?empty($p[$c]['sheet']):trim((string)$d['description'])===''))$m[]=$c;$tc=txtCode($ty);if(empty($p[$ty.'0']['sheet'])||($tc&&empty($p[$tc]['sheet'])))$m[]='PDF';return $m;}
 function complete(array $d,array $p):bool{return !missing($d,$p);}
 function asset(string $p):string{return 'assets/'.$p.'?v='.(@filemtime(__DIR__.'/assets/'.$p)?:1);}
 function flash(string $t,string $m):void{$_SESSION['flash']=[$t,$m];}
@@ -118,3 +145,8 @@ function migrate5():void{$f=__DIR__.'/storage/.v5';if(is_file($f))return;
  db()->exec("UPDATE pieces SET code=IF(code='X7','DP7','DP8') WHERE code IN ('X7','X8')");
  file_put_contents($f,'1');}
 migrate5();
+// v6 : type de dossier (DP, AP, PD). Les dossiers existants deviennent des DP.
+function migrate6():void{$f=__DIR__.'/storage/.v6';if(is_file($f))return;
+ try{db()->exec("ALTER TABLE dossiers ADD type VARCHAR(4) NOT NULL DEFAULT 'DP' AFTER user_id");}catch(Throwable){}
+ file_put_contents($f,'1');}
+migrate6();
