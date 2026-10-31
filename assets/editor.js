@@ -2,7 +2,7 @@
 const W=1654,H=1169,$=(s)=>document.querySelector(s);
 const el=(t,a={},...k)=>{const e=document.createElement(t);Object.assign(e,a);e.append(...k);return e;};
 const KINDS={fenetre:['Fenêtre',140,160,'#2f3640',120,135],porte:['Porte',110,230,'#6b4423',90,215],volet:['Volet',60,160,'#cfcfcf',60,135],lucarne:['Lucarne',150,150,'#2f3640',120,120],cadre:['Cadre',220,160,'#d11',0,0]};
-const TOOLS={DP1:['poly','cadre','cote','text'],DP4:['fenetre','porte','volet','lucarne','cadre','cote','text'],DP6:['fenetre','porte','volet','lucarne','cadre','text'],DP5:[],DP7:[],DP8:[]};
+const TOOLS={DP1:['poly','cadre','cote','text'],DP2:['poly','cadre','cote','text'],DP3:['poly','cadre','cote','text'],DP4:['fenetre','porte','volet','lucarne','cadre','cote','text'],DP5:['fenetre','porte','volet','lucarne','cadre','text'],DP6:['fenetre','porte','volet','lucarne','cadre','text'],DP7:[],DP8:[]};
 const NAMES={poly:'Contour parcelle',cote:'Cote',text:'Texte',fenetre:'+ Fenêtre',porte:'+ Porte',volet:'+ Volet',lucarne:'+ Lucarne',cadre:'+ Cadre'};
 function wrap(c,t,x,y,mw,lh){String(t).split('\n').forEach(p=>{let l='';p.split(' ').forEach(w=>{const n=l?l+' '+w:w;if(c.measureText(n).width>mw&&l){c.fillText(l,x,y);y+=lh;l=w;}else l=n;});c.fillText(l,x,y);y+=lh;});return y;}
 function fit(c,t,mw){t=String(t);while(t.length>3&&c.measureText(t).width>mw)t=t.slice(0,-2);return t;}
@@ -16,7 +16,7 @@ function frame(c,m,code,title){
  c.fillStyle='#fff';c.font='bold 54px Arial';c.textAlign='center';c.fillText(code,1517,1040);c.textAlign='left';}
 let REDRAW=()=>{};const IM={};const getImg=(id,cb)=>{if(!IM[id]){const i=new Image();i.src='index.php?a=libimg&id='+id;IM[id]=i;i.onload=()=>cb&&cb();}return IM[id];};
 const imgsReady=os=>Promise.all(os.filter(o=>o.t==='img').map(o=>{const i=getImg(o.id);return i.complete?0:new Promise(r=>{i.onload=i.onerror=r;});}));
-const LIB=['DP4','DP6'];
+const LIB=['DP4','DP5','DP6'];
 const seg=(px,py,x1,y1,x2,y2)=>{const dx=x2-x1,dy=y2-y1,l=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l));return Math.hypot(px-x1-t*dx,py-y1-t*dy);};
 function label(c,t,x,y){c.font='bold 20px Arial';c.textBaseline='top';const w=c.measureText(t).width+12;c.fillStyle='rgba(255,255,255,.92)';c.fillRect(x,y,w,26);c.fillStyle='#000';c.fillText(t,x+6,y+3);}
 let HK=1;const R=o=>(o.rot||0)*Math.PI/180;
@@ -91,7 +91,7 @@ function editor(root,cfg){
  document.addEventListener('paste',e=>{const f=[...(e.clipboardData?.files||[])].find(x=>x.type.startsWith('image/'));if(f)loadFile(f);});
  btn(bar,'Importer une image',()=>{fi.removeAttribute('capture');fi.click();});btn(bar,'Appareil photo',cam);
  if(navigator.mediaDevices?.getDisplayMedia)btn(bar,'Capturer un onglet / écran',scr);
- if(cfg.c==='DP1'){bar.append(el('a',{href:'https://www.google.com/maps',target:'_blank',rel:'noopener',textContent:'Ouvrir Google Maps ↗',className:'b'}),el('a',{href:'https://cadastre.gouv.fr/scpc/accueil.do',target:'_blank',rel:'noopener',textContent:'Ouvrir le cadastre ↗',className:'b'}));}
+ if(cfg.c==='DP1'){bar.append(el('a',{href:'https://www.google.com/maps',target:'_blank',rel:'noopener',textContent:'Ouvrir Google Maps ↗',className:'b'}),el('a',{href:'https://cadastre.gouv.fr/scpc/accueil.do',target:'_blank',rel:'noopener',textContent:'Ouvrir le cadastre ↗',className:'b'}),el('a',{href:'https://earth.google.com/web/',target:'_blank',rel:'noopener',textContent:'Vue aérienne (Google Earth) ↗',className:'b'}));}
  bar.append(el('small',{textContent:'Astuce : Ctrl+V colle une capture d’écran.'}));
  const setTool=t=>{tool=t;tmp=[];[...bar2.children].forEach(b=>b.style.outline=b.dataset.t===t?'3px solid #f59e0b':'');draw();};
  if(tools.length){const b=btn(bar2,'Sélection',()=>setTool('select'));b.dataset.t='select';tools.forEach(t=>{const x=btn(bar2,NAMES[t],()=>setTool(t));x.dataset.t=t;});}
@@ -167,7 +167,7 @@ function auto(a){const cfg=JSON.parse(a.dataset.cfg);if(!cfg.edit)return;
  const prep=async()=>{const ta=document.querySelector('textarea[name=description]'),desc=ta?ta.value:(cfg.desc||''),cv=el('canvas',{width:W,height:H}),c=cv.getContext('2d');
   const up=async(code,title,lines,d)=>{frame(c,cfg.meta,code,title);if(code==='DP0')cover(c,cfg.meta,cfg.list);else{c.fillStyle='#14213d';c.textBaseline='top';c.font='28px Arial';let y=80;lines.forEach(t=>{y=wrap(c,t,80,y,W-160,40);});}
    const fd=new FormData();fd.append('t',cfg.t);fd.append('id',cfg.id);fd.append('c',code);fd.append('data','{}');fd.append('sheet',await new Promise(r=>cv.toBlob(r,'image/jpeg',.88)),'s.jpg');if(d!==undefined)fd.append('desc',d);await fetch('index.php?a=save',{method:'POST',body:fd});};
-  await up('DP0','PAGE DE GARDE',[cfg.meta.titre,'','Pièces du dossier :',...cfg.list]);await up('DP11','DESCRIPTION DU PROJET',[desc||'(à compléter)'],desc);};
+  await up('DP0','PAGE DE GARDE',[cfg.meta.titre,'','Pièces du dossier :',...cfg.list]);await up('DP11','NOTICE : MATÉRIAUX ET MODALITÉS D’EXÉCUTION',[desc||'(à compléter)'],desc);};
  document.querySelectorAll('.pdfgo').forEach(l=>l.addEventListener('click',async ev=>{ev.preventDefault();l.classList.add('loading');try{await prep();location.href=l.href;dlg.alert('Votre PDF est en cours de téléchargement.','success');}catch(x){dlg.alert('Préparation du PDF impossible : '+x.message,'danger');}l.classList.remove('loading');}));
  document.querySelectorAll('.submitgo').forEach(b=>b.form.addEventListener('submit',async ev=>{ev.preventDefault();b.disabled=true;try{await prep();ev.target.submit();}catch(x){b.disabled=false;b.classList.remove('loading');dlg.alert('Envoi impossible : '+x.message,'danger');}}));}
 const r=$('#ed');if(r)editor(r,JSON.parse(r.dataset.cfg));const a=$('#auto');if(a)auto(a);

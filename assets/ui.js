@@ -13,6 +13,7 @@ function box({type='info',title,msg,ok='OK',cancel=null,input=null}){return new 
 window.dlg={alert:(m,t,ti)=>box({type:t||(/^Échec|impossible/.test(m)?'danger':'warning'),msg:m,title:ti}),
  confirm:(m,o={})=>box({type:o.type||'warning',msg:m,title:o.title||'Confirmation',ok:o.ok||'Confirmer',cancel:'Annuler'}),
  prompt:(m,v='')=>box({type:'info',msg:m,title:'Saisie',input:v,ok:'Valider',cancel:'Annuler'})};
+if(document.documentElement.classList.contains('splash'))setTimeout(()=>{document.documentElement.classList.add('splash-out');setTimeout(()=>document.documentElement.classList.remove('splash','splash-out'),450);},1300);
 const f=q('#flash');if(f)dlg.alert(f.dataset.msg,f.dataset.type);
 q('#mb')?.addEventListener('click',()=>q('.side').classList.toggle('open'));
 document.addEventListener('submit',async e=>{const b=e.submitter||e.target.querySelector('button:not([type=button])');

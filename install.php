@@ -19,9 +19,9 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $ok=true; @unlink(__FILE__);
   } catch (Throwable $x) { $err=$x->getMessage(); }
 }
-?><!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Installation – Dossier DP</title><link rel="stylesheet" href="assets/app.css"><script src="assets/theme.js"></script>
+?><!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Installation – DOSSIERUrba</title><link rel="stylesheet" href="assets/app.css"><script src="assets/theme.js"></script>
 <body><main class="auth"><div class="c" style="max-width:520px">
-<button type="button" class="ghost th" style="position:absolute;top:12px;right:12px" aria-label="Thème"><span class="sun">☀</span><span class="moon">☾</span></button><div class="brand"><b>DP</b><span>Installation de Dossier DP</span></div>
+<button type="button" class="ghost th" style="position:absolute;top:12px;right:12px" aria-label="Thème"><span class="sun">☀</span><span class="moon">☾</span></button><img class="logo" src="assets/logo.png" alt="DOSSIERUrba" style="display:block;width:180px;margin:0 auto 10px"><p class="mu" style="text-align:center">Installation de DOSSIERUrba</p>
 <?php
 $e=fn($s)=>htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8');
 $chk=[['PHP 8.0 ou plus ('.PHP_VERSION.')',version_compare(PHP_VERSION,'8.0','>=')],['Extension PDO MySQL',extension_loaded('pdo_mysql')],['Extension GD (images)',extension_loaded('gd')],['Extension mbstring',extension_loaded('mbstring')],['Extension fileinfo',extension_loaded('fileinfo')],['Dossier inscriptible',is_writable(__DIR__)]];

@@ -9,7 +9,7 @@ a{color:var(--pr)}h1,h2,h3{margin:0 0 6px;letter-spacing:-.01em}h2{font-size:24p
 .app{display:flex;min-height:100vh}
 .side{width:240px;flex:none;background:var(--card);border-right:1px solid var(--bd);padding:18px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;padding:2px 8px 16px}
-.brand b{border:2px solid var(--tx);padding:2px 7px;font-size:13px;letter-spacing:.04em}
+.brand{text-decoration:none;color:inherit}.brand img{width:34px;height:34px;border-radius:8px;background:#fff}.brand span{font-size:19px;font-weight:800;letter-spacing:-.01em}.brand b{color:var(--navy)}.brand i{font-style:normal;color:var(--green)}.top .brand{padding:0}
 .nav{display:flex;flex-direction:column;gap:2px;flex:1}
 .nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);color:var(--tx);text-decoration:none;border-left:3px solid transparent}
 .nav a:hover{background:var(--bg)}.nav a.on{border-left-color:var(--pr);background:var(--bg);font-weight:600;color:var(--pr)}
@@ -57,3 +57,21 @@ table{width:100%;border-collapse:collapse}th{font-size:12px;color:var(--mu);text
 .inst{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50;display:flex;gap:6px;align-items:center;background:var(--card);border:1px solid var(--bd);border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.18);max-width:calc(100% - 32px)}
 .inst button{width:auto;margin:0;border-radius:999px;padding:8px 14px;white-space:nowrap}
 .inst .ghost{padding:8px 12px}
+
+:root{--navy:#0d3466;--green:#2e8b45}
+:root[data-theme=dark]{--navy:#e6ebf5;--green:#4ade80}
+#splash{display:none}
+html.splash #splash{display:flex;position:fixed;inset:0;z-index:100;background:#fff;align-items:center;justify-content:center;transition:opacity .4s}
+html.splash-out #splash{opacity:0}
+#splash img{width:min(70vw,360px);animation:sp .6s ease-out}
+@keyframes sp{from{transform:scale(.9);opacity:0}}
+.auth .logo{display:block;width:200px;max-width:70%;margin:0 auto 12px;border-radius:10px;background:#fff;padding:6px}
+.zl{text-align:center;margin-top:10px}
+.hero{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;border-left:4px solid var(--green)}
+.hero h2{margin:0 0 4px}
+.nh{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);padding:14px 12px 4px}
+.tk{display:inline-block;min-width:28px;font-size:11px;font-weight:800;border:1px solid currentColor;border-radius:4px;text-align:center;padding:1px 3px}
+.nav .soon{display:flex;align-items:center;gap:10px;padding:8px 12px;color:var(--mu);cursor:not-allowed;opacity:.75}
+.nav .soon small{margin-left:auto;font-size:11px;white-space:nowrap}
+.hp{color:var(--mu);font-size:14px;margin:6px 0 8px}
+.cerfa{border-left:4px solid var(--pr)}
