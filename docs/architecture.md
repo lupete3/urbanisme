@@ -42,6 +42,7 @@ dossierurba-data/
 | `consents` | Registre des consentements : version, choix, source (web/mobile), IP, date |
 | `subscriptions` | Abonnements et accès offerts : formule, plateforme (admin, google, apple), dates, statut |
 | `api_tokens` | Jetons de connexion de l'application mobile (empreinte SHA-256, expiration glissante de 90 jours) |
+| `password_resets` | Liens de réinitialisation du mot de passe (empreinte SHA-256, 1 heure, usage unique) |
 | `login_fails` | Limitation des tentatives de connexion et d'inscription |
 
 ## Migrations
@@ -57,6 +58,7 @@ Elles s'exécutent automatiquement au premier chargement de page. Chacune ne tou
 | v6 | Type de dossier (DP/AP/PD) |
 | v7 | Table `settings` |
 | v8 | Consentement, `unlocked_via`, `consents`, `subscriptions`, `api_tokens` (dans `core.php`) |
+| v9 | `password_resets` (dans `core.php`) |
 
 Pour ajouter une migration : écrire une fonction `migrateN()` qui crée son marqueur `DATA.'/.vN'`. Elle doit pouvoir être relancée sans dégât (`IF NOT EXISTS`, `try/catch` sur les `ALTER`).
 

@@ -71,6 +71,7 @@ case 'POST auth/register':
  try{db()->prepare("INSERT INTO users(email,pass_hash,name,role,created_at) VALUES(?,?,?,'declarant',NOW())")->execute([$em,password_hash($pw,PASSWORD_DEFAULT),mb_substr($nm,0,120)]);}catch(PDOException){fail('Cette adresse e-mail est déjà utilisée.',409);}
  $id=(int)db()->lastInsertId();recordConsent($id,yes('analytics'),yes('marketing'),'mobile');notifyStaff('Nouvel utilisateur inscrit (mobile) : '.mb_substr($nm,0,60),'a=users');
  $GLOBALS['API_UID']=$id;out(['ok'=>true,'token'=>newToken($id,(string)in('device','mobile')),'user'=>userOut(me())],201);
+case 'POST auth/forgot':startReset((string)in('email'));out(['ok'=>true,'message'=>'Si un compte existe avec cette adresse, un e-mail vient de lui être envoyé avec un lien valable 1 heure.']);
 case 'POST auth/login':
  $em=strtolower(trim((string)in('email')));$tk='login|'.($_SERVER['REMOTE_ADDR']??'').'|'.$em;if(throttled($tk))fail('Trop de tentatives : réessayez dans 15 minutes.',429);
  $s=db()->prepare('SELECT * FROM users WHERE email=?');$s->execute([$em]);$x=$s->fetch();

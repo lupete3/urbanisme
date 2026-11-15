@@ -177,3 +177,27 @@ function exportData(array $u):array{$q=function(string $sql)use($u){$s=db()->pre
  return ['application'=>APP,'exporte_le'=>date('c'),'compte'=>$me,'dossiers'=>$ds,'consentements'=>$q('SELECT version,analytics,marketing,source,created_at FROM consents WHERE user_id=? ORDER BY id'),
   'abonnements'=>$q('SELECT plan,platform,status,starts_at,ends_at FROM subscriptions WHERE user_id=?'),'notifications'=>$q('SELECT msg,read_at,created_at FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 200'),
   'bibliotheque'=>$q('SELECT name,wcm,hcm,shared,created_at FROM library WHERE user_id=?')];}
+
+/* ---------- Mot de passe oublié (docs/rgpd-consentement.md, docs/api.md) ---------- */
+function migrate9():void{$f=DATA.'/.v9';if(is_file($f))return;
+ db()->exec("CREATE TABLE IF NOT EXISTS password_resets(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT NOT NULL,hash CHAR(64) NOT NULL UNIQUE,expires_at DATETIME NOT NULL,used_at DATETIME NULL,created_at DATETIME NOT NULL,INDEX(user_id),FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+ file_put_contents($f,'1');}
+migrate9();
+function siteBase():string{return (empty($_SERVER['HTTPS'])?'http':'https').'://'.($_SERVER['HTTP_HOST']??'localhost').rtrim(str_replace('\\','/',dirname($_SERVER['SCRIPT_NAME']??'/')),'/').'/';}
+// Envoi d'un e-mail texte via mail() (Hostinger). Expéditeur : réglage « mail_from » (Admin → Textes légaux).
+function sendMail(string $to,string $subject,string $body):bool{
+ $from=setting('mail_from','')?:'no-reply@'.preg_replace('/^www\./','',explode(':',(string)($_SERVER['HTTP_HOST']??'localhost'))[0]);
+ $h="From: ".mb_encode_mimeheader(APP)." <$from>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit";
+ if(filter_var(setting('legal_contact'),FILTER_VALIDATE_EMAIL))$h.="\r\nReply-To: ".setting('legal_contact');
+ $ok=@mail($to,mb_encode_mimeheader($subject,'UTF-8'),$body,$h,'-f'.$from);if(!$ok)error_log('Envoi d’e-mail impossible vers '.$to.' : '.$subject);return $ok;}
+// Demande de réinitialisation : toujours silencieuse (ne révèle pas si le compte existe). Lien valable 1 heure.
+function startReset(string $email):void{$k='reset|'.($_SERVER['REMOTE_ADDR']??'');failed($k);if(throttled($k))return;
+ $s=db()->prepare('SELECT id,name,email FROM users WHERE email=?');$s->execute([strtolower(trim($email))]);$u=$s->fetch();if(!$u)return;
+ db()->prepare('DELETE FROM password_resets WHERE user_id=? OR expires_at<NOW()')->execute([$u['id']]);$t=bin2hex(random_bytes(32));
+ db()->prepare('INSERT INTO password_resets(user_id,hash,expires_at,created_at) VALUES(?,?,DATE_ADD(NOW(),INTERVAL 1 HOUR),NOW())')->execute([$u['id'],hash('sha256',$t)]);
+ sendMail($u['email'],APP.' : réinitialisation de votre mot de passe',"Bonjour ".$u['name'].",\n\nPour choisir un nouveau mot de passe, ouvrez ce lien (valable 1 heure) :\n".siteBase()."index.php?a=reset&t=$t\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.\n\nL'équipe ".APP);}
+function resetUser(string $t):?array{if(!preg_match('/^[a-f0-9]{64}$/',$t))return null;$s=db()->prepare('SELECT r.id rid,u.* FROM password_resets r JOIN users u ON u.id=r.user_id WHERE r.hash=? AND r.used_at IS NULL AND r.expires_at>NOW()');$s->execute([hash('sha256',$t)]);return $s->fetch()?:null;}
+// Nouveau mot de passe : déconnecte aussi l'application mobile sur tous les appareils
+function resetPassword(string $t,string $new):?string{$u=resetUser($t);if(!$u)return 'Ce lien n’est plus valable : refaites une demande.';if(strlen($new)<10)return 'Mot de passe : 10 caractères minimum.';
+ db()->prepare('UPDATE users SET pass_hash=? WHERE id=?')->execute([password_hash($new,PASSWORD_DEFAULT),$u['id']]);db()->prepare('UPDATE password_resets SET used_at=NOW() WHERE id=?')->execute([$u['rid']]);
+ db()->prepare('DELETE FROM api_tokens WHERE user_id=?')->execute([$u['id']]);return null;}

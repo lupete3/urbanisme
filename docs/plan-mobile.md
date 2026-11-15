@@ -14,7 +14,7 @@
 |---|---|---|
 | 0. Cadrage | Choix technique, cahier des charges, décisions du client | ✅ Fait |
 | 1. Serveur | API JSON, consentement et textes légaux, modèle d'accès, accès offerts, back-office | ✅ Fait (15/11/2026) |
-| 2. Appli Android | Projet Capacitor, écrans, éditeur, appareil photo, PDF, notifications | ⏳ À démarrer |
+| 2. Appli Android | Projet Capacitor (dépôt `lupete3/urbanisme-mobile`), écrans, éditeur, appareil photo, PDF, notifications | ⏳ En cours : 2.1 projet ✅, 2.2 compte et consentement ✅ |
 | 3. Tests et Play Store | Test fermé (compte personnel : 12 testeurs pendant 14 jours), fiche store, publication | — |
 | 4. Paiements dans l'appli | Google Play Billing relié à `subscriptions` (quand le client passera au payant) | — |
 | 5. iPhone | Adaptations, Apple In-App Purchase, revue App Store | — |
@@ -45,7 +45,7 @@
 ## Spécifications de l'appli V1
 
 - Écran d'ouverture, puis consentement au premier lancement (et à chaque nouvelle version des textes).
-- Inscription, connexion, mot de passe oublié (à ajouter côté serveur en phase 2), profil, export des données, suppression du compte.
+- Inscription, connexion, mot de passe oublié (fait côté serveur et appli), profil, export des données, suppression du compte.
 - Accueil : formule d'accès, bouton « Zone de ma parcelle », liste des dossiers.
 - Dossiers DP / AP / PD : pièces, aides, lien Cerfa. Types PC / PL / AT affichés « À venir ».
 - Éditeur réutilisé depuis `assets/editor.js` : photo native, galerie, annotations, émojis, bibliothèque, Annuler / Rétablir, filigrane BROUILLON.

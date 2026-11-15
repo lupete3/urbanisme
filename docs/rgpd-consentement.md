@@ -11,6 +11,10 @@ Code : `core.php` (`recordConsent()`, `needsConsent()`, `legalText()`, `exportDa
 3. **Mon profil → Mes données et consentements** : modifier les choix facultatifs, télécharger ses données (JSON), relire les textes.
 4. **Supprimer mon compte** : suppression immédiate et complète (dossiers, images, bibliothèque, consentements, jetons). C'est aussi possible depuis l'appli (`POST /api/me/delete`).
 
+## Mot de passe oublié
+
+Sur le site (« Mot de passe oublié ? » sous la connexion) ou dans l'appli. Un e-mail est envoyé avec un lien valable 1 heure et à usage unique (`index.php?a=reset`). La réponse est identique, que le compte existe ou non. L'expéditeur se règle dans **Textes légaux → Expéditeur des e-mails** : utiliser une adresse du domaine, par exemple `no-reply@pftecho.com`, pour éviter le classement en indésirables.
+
 ## Pages publiques
 
 Elles sont accessibles sans connexion. Leurs URL sont à renseigner dans les fiches Google Play et App Store.

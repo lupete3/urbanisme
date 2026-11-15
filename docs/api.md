@@ -28,6 +28,7 @@ Fichier : `api.php`. Logique métier partagée avec le site : `core.php`.
 | GET | `legal/cgu`, `legal/privacy` | Texte légal (`text` brut et `html`) avec sa version |
 | POST | `auth/register` | `{name, email, password, cgu: true, analytics?, marketing?, device?}` → `201 {token, user}` |
 | POST | `auth/login` | `{email, password, device?}` → `{token, user}` |
+| POST | `auth/forgot` | `{email}` : envoie un lien de réinitialisation valable 1 heure. La réponse est toujours `ok`, pour ne pas révéler si le compte existe. Le nouveau mot de passe se choisit sur le site (`index.php?a=reset`), ce qui déconnecte aussi l'appli sur tous les appareils |
 
 ### Compte (jeton requis)
 

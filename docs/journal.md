@@ -1,5 +1,10 @@
 # Journal des évolutions
 
+## 15/11/2026 : Mot de passe oublié
+- Réinitialisation par e-mail : site (`?a=forgot`, `?a=reset`) et API (`POST auth/forgot`). Lien valable 1 heure, à usage unique. Le changement déconnecte l'appli mobile partout.
+- Réglage de l'adresse d'expédition des e-mails (Textes légaux).
+- Migration v9 (`password_resets`).
+
 ## 15/11/2026 : Phase 1 mobile (serveur)
 - `core.php` : logique métier commune au site et à l'API.
 - `api.php` : API JSON avec jetons pour l'application mobile ([api.md](api.md)).
