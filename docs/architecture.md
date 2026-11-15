@@ -9,7 +9,7 @@
 | `core.php` | Fonctions métier communes au site et à l'API : dossiers, accès, consentement, compte. Migration v8 |
 | `lib.php` | Socle : configuration, base de données, session, mise en page, rendu des planches, PDF, migrations v2 à v7. Charge `core.php` |
 | `install.php` | Installation initiale. Se supprime après usage |
-| `assets/editor.js` | Éditeur de planches (canvas), page de garde, préparation du PDF |
+| `assets/editor.js` | Éditeur de planches (canvas), page de garde, préparation du PDF. **Partagé avec l'appli mobile** : les échanges passent par l'objet `IO` (pages du site par défaut, API dans l'appli via `window.EDITOR_IO`). L'appli l'expose par `window.DPEditor`. Toute modification doit rester compatible avec les deux ; l'appli en récupère une copie par `npm run sync` |
 | `assets/ui.js`, `theme.js`, `app.css` | Interface, boîtes de dialogue, thème clair / sombre, bouton d'installation PWA |
 | `sw.js`, `manifest.webmanifest` | Application web installable (PWA) |
 | `.htaccess` | HTTPS forcé, en-têtes de sécurité, accès refusé à `config.php` / `lib.php` / `core.php`, réécriture `/api/` |

@@ -117,6 +117,7 @@ case 'POST notifications/read':$u=auth();db()->prepare('UPDATE notifications SET
 
 // Bibliothèque d'objets
 case 'GET library':$u=auth();$s=db()->prepare('SELECT id,name,wcm,hcm,shared,(user_id=?) AS mine FROM library WHERE user_id=? OR shared=1 ORDER BY id DESC');$s->execute([$u['id'],$u['id']]);out(['ok'=>true,'items'=>$s->fetchAll()]);
+case 'POST library':$u=auth();if($er=saveLibraryItem($u,$_FILES['png']??null,$_POST))fail($er);out(['ok'=>true],201);
 case 'GET library/{id}/image':$u=auth();$s=db()->prepare('SELECT * FROM library WHERE id=? AND (user_id=? OR shared=1)');$s->execute([(int)$seg[1],$u['id']]);$x=$s->fetch();if(!$x||!is_file(DATA.'/lib/'.basename($x['file'])))fail('Image introuvable.',404);
  header('Content-Type: image/png');header('Cache-Control: private, max-age=86400');readfile(DATA.'/lib/'.basename($x['file']));exit;
 case 'DELETE library/{id}':$u=auth();$s=db()->prepare('SELECT * FROM library WHERE id=?');$s->execute([(int)$seg[1]]);$x=$s->fetch();

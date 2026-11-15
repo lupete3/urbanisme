@@ -1,5 +1,9 @@
 # Journal des évolutions
 
+## 15/11/2026 : Éditeur partagé avec l'appli
+- `assets/editor.js` utilise un adaptateur `IO` : même éditeur pour le site et l'application mobile (API, appareil photo natif).
+- API : `POST library` (ajout d'un objet de bibliothèque). Code commun `saveLibraryItem()` dans `core.php`.
+
 ## 15/11/2026 : Mot de passe oublié
 - Réinitialisation par e-mail : site (`?a=forgot`, `?a=reset`) et API (`POST auth/forgot`). Lien valable 1 heure, à usage unique. Le changement déconnecte l'appli mobile partout.
 - Réglage de l'adresse d'expédition des e-mails (Textes légaux).

@@ -201,3 +201,14 @@ function resetUser(string $t):?array{if(!preg_match('/^[a-f0-9]{64}$/',$t))retur
 function resetPassword(string $t,string $new):?string{$u=resetUser($t);if(!$u)return 'Ce lien n’est plus valable : refaites une demande.';if(strlen($new)<10)return 'Mot de passe : 10 caractères minimum.';
  db()->prepare('UPDATE users SET pass_hash=? WHERE id=?')->execute([password_hash($new,PASSWORD_DEFAULT),$u['id']]);db()->prepare('UPDATE password_resets SET used_at=NOW() WHERE id=?')->execute([$u['rid']]);
  db()->prepare('DELETE FROM api_tokens WHERE user_id=?')->execute([$u['id']]);return null;}
+
+/* ---------- Bibliothèque d'objets ---------- */
+// Ajout d'un objet (PNG détouré). Renvoie null ou un message d'erreur. Seul un admin peut le partager.
+function saveLibraryItem(array $u,?array $f,array $in):?string{
+ if(!$f||$f['error']!==0||$f['size']>4*1048576)return 'fichier refusé';
+ $raw=file_get_contents($f['tmp_name']);if((new finfo(FILEINFO_MIME_TYPE))->buffer($raw)!=='image/png'||!($im=@imagecreatefromstring($raw)))return 'image invalide';
+ $n=db()->prepare('SELECT COUNT(*) FROM library WHERE user_id=?');$n->execute([$u['id']]);if($n->fetchColumn()>=100)return 'bibliothèque pleine (100)';
+ $k=min(1,1000/max(imagesx($im),imagesy($im)));if($k<1){$t=imagecreatetruecolor((int)(imagesx($im)*$k),(int)(imagesy($im)*$k));imagealphablending($t,false);imagesavealpha($t,true);imagefill($t,0,0,imagecolorallocatealpha($t,0,0,0,127));imagecopyresampled($t,$im,0,0,0,0,imagesx($t),imagesy($t),imagesx($im),imagesy($im));$im=$t;}else{imagealphablending($im,false);imagesavealpha($im,true);}
+ $fn=bin2hex(random_bytes(16)).'.png';imagepng($im,DATA.'/lib/'.$fn,6);$sh=($u['role']==='admin'&&!empty($in['shared']))?1:0;
+ db()->prepare('INSERT INTO library(user_id,name,file,wcm,hcm,shared,created_at) VALUES(?,?,?,?,?,?,NOW())')->execute([$u['id'],mb_substr(trim((string)($in['name']??'Objet')),0,60)?:'Objet',$fn,max(0,min(5000,(int)($in['wcm']??0))),max(0,min(5000,(int)($in['hcm']??0))),$sh]);
+ return null;}

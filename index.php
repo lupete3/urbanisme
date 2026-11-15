@@ -124,14 +124,7 @@ if($a==='pdf'){try{$d=dossier((int)($_GET['id']??0));[$out,$fn]=dossierPdf($d);h
 if($a==='lib'){header('Content-Type: application/json');$s=db()->prepare('SELECT id,name,wcm,hcm,shared,(user_id=?) AS mine FROM library WHERE user_id=? OR shared=1 ORDER BY id DESC');$s->execute([$u['id'],$u['id']]);echo json_encode($s->fetchAll());exit;}
 if($a==='libimg'){$s=db()->prepare('SELECT * FROM library WHERE id=? AND (user_id=? OR shared=1)');$s->execute([(int)($_GET['id']??0),$u['id']]);$r=$s->fetch();if(!$r){http_response_code(404);exit;}header('Content-Type: image/png');header('Cache-Control: private, max-age=86400');readfile(DATA.'/lib/'.basename($r['file']));exit;}
 if($a==='libdel'&&$post){$s=db()->prepare('SELECT * FROM library WHERE id=?');$s->execute([(int)($_POST['id']??0)]);$r=$s->fetch();if($r&&($r['user_id']==$u['id']||$u['role']==='admin')){@unlink(DATA.'/lib/'.basename($r['file']));db()->prepare('DELETE FROM library WHERE id=?')->execute([$r['id']]);}echo '{"ok":1}';exit;}
-if($a==='libsave'&&$post){header('Content-Type: application/json');$f=$_FILES['png']??null;
- if(!$f||$f['error']!==0||$f['size']>4*1048576){echo '{"ok":0,"err":"fichier refusé"}';exit;}
- $raw=file_get_contents($f['tmp_name']);if((new finfo(FILEINFO_MIME_TYPE))->buffer($raw)!=='image/png'||!($im=@imagecreatefromstring($raw))){echo '{"ok":0,"err":"image invalide"}';exit;}
- $n=db()->prepare('SELECT COUNT(*) FROM library WHERE user_id=?');$n->execute([$u['id']]);if($n->fetchColumn()>=100){echo '{"ok":0,"err":"bibliothèque pleine (100)"}';exit;}
- $k=min(1,1000/max(imagesx($im),imagesy($im)));if($k<1){$t=imagecreatetruecolor((int)(imagesx($im)*$k),(int)(imagesy($im)*$k));imagealphablending($t,false);imagesavealpha($t,true);imagefill($t,0,0,imagecolorallocatealpha($t,0,0,0,127));imagecopyresampled($t,$im,0,0,0,0,imagesx($t),imagesy($t),imagesx($im),imagesy($im));$im=$t;}else{imagealphablending($im,false);imagesavealpha($im,true);}
- $fn=bin2hex(random_bytes(16)).'.png';imagepng($im,DATA.'/lib/'.$fn,6);$sh=($u['role']==='admin'&&!empty($_POST['shared']))?1:0;
- db()->prepare('INSERT INTO library(user_id,name,file,wcm,hcm,shared,created_at) VALUES(?,?,?,?,?,?,NOW())')->execute([$u['id'],mb_substr(trim((string)($_POST['name']??'Objet')),0,60)?:'Objet',$fn,max(0,min(5000,(int)($_POST['wcm']??0))),max(0,min(5000,(int)($_POST['hcm']??0))),$sh]);
- echo '{"ok":1}';exit;}
+if($a==='libsave'&&$post){header('Content-Type: application/json');$er=saveLibraryItem($u,$_FILES['png']??null,$_POST);echo json_encode($er?['ok'=>0,'err'=>$er]:['ok'=>1]);exit;}
 
 if($a==='admin'){need(true);
  if($post&&isset($_POST['id'])){$id=(int)$_POST['id'];if($_POST['st']==='paye'){unlockDossier($id,'paiement');flash('success','Paiement validé : le filigrane est retiré du PDF.');}

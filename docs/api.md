@@ -70,6 +70,7 @@ Fichier : `api.php`. Logique métier partagée avec le site : `core.php`.
 | GET | `notifications` | 50 dernières + nombre de non lues |
 | POST | `notifications/read` | Tout marquer comme lu |
 | GET | `library` | Objets personnels et partagés |
+| POST | `library` | multipart : `png` (objet détouré), `name`, `wcm`, `hcm`, `shared` (admin uniquement) |
 | GET | `library/{id}/image` | Image PNG de l'objet |
 | DELETE | `library/{id}` | Supprime un objet (le sien, ou n'importe lequel pour un admin) |
 
