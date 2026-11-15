@@ -13,7 +13,7 @@ function frame(c,m,code,title){
  c.fillStyle='#eef1f6';c.fillRect(41,1001,W-82,127);c.fillStyle='#0d3466';c.fillRect(1380,1001,W-1421,127);c.fillStyle='#2e8b45';c.fillRect(41,1001,10,127);c.fillStyle='#14213d';c.textBaseline='top';c.textAlign='left';c.font='bold 30px Arial';c.fillText(fit(c,HEAD[0].toUpperCase(),580),68,1018);c.fillText(fit(c,HEAD[1].toUpperCase(),580),68,1056);
  c.font='15px Arial';c.fillText('Ces documents ne se substituent pas aux plans d’exécution.',68,1104);
  c.font='20px Arial';[['Propriétaire : '+m.owner],['Projet : '+m.titre],['Adresse : '+m.adresse],['Parcelle n° '+m.parcelle]].forEach((t,i)=>c.fillText(fit(c,t[0],410),680,1012+i*29));
- c.font='bold 21px Arial';wrap(c,title,1118,1014,250,26);c.font='18px Arial';c.fillText(new Date().toLocaleDateString('fr-FR'),1118,1100);
+ let fs=21;const nl=()=>{let n=1,l='';String(title).split(' ').forEach(w=>{const t=l?l+' '+w:w;if(c.measureText(t).width>250&&l){n++;l=w;}else l=t;});return n;};for(;fs>13;fs--){c.font='bold '+fs+'px Arial';if(nl()*fs*1.24<=80)break;}wrap(c,title,1118,1014,250,Math.round(fs*1.24));c.font='18px Arial';c.fillText(new Date().toLocaleDateString('fr-FR'),1118,1100);
  c.fillStyle='#fff';c.font='bold 54px Arial';c.textAlign='center';c.fillText(code,1517,1040);c.textAlign='left';}
 function draft(c){c.save();c.globalAlpha=.12;c.fillStyle='#c00';c.font='bold 120px Arial';c.textAlign='center';c.textBaseline='middle';c.translate(W/2,H/2);c.rotate(-Math.PI/7);for(let y=-780,r=0;y<=780;y+=260,r++)for(let x=-1300;x<=1300;x+=780)c.fillText('BROUILLON',x+(r%2?390:0),y);c.restore();}
 // Échanges avec le serveur. Par défaut : pages du site. L'appli mobile fournit window.EDITOR_IO (API + appareil photo natif).

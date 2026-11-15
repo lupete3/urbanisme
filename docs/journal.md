@@ -1,5 +1,8 @@
 # Journal des évolutions
 
+## 15/11/2026 : Cartouche des planches
+- Le titre long d'une pièce (ex. PD9) réduit sa police pour ne plus déborder sur la date (`frame()` dans `assets/editor.js`, partagé avec l'appli).
+
 ## 15/11/2026 : Éditeur partagé avec l'appli
 - `assets/editor.js` utilise un adaptateur `IO` : même éditeur pour le site et l'application mobile (API, appareil photo natif).
 - API : `POST library` (ajout d'un objet de bibliothèque). Code commun `saveLibraryItem()` dans `core.php`.

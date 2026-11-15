@@ -14,7 +14,7 @@
 |---|---|---|
 | 0. Cadrage | Choix technique, cahier des charges, décisions du client | ✅ Fait |
 | 1. Serveur | API JSON, consentement et textes légaux, modèle d'accès, accès offerts, back-office | ✅ Fait (15/11/2026) |
-| 2. Appli Android | Projet Capacitor (dépôt `lupete3/urbanisme-mobile`), écrans, éditeur, appareil photo, PDF, notifications | ⏳ En cours : 2.1 projet ✅, 2.2 compte et consentement ✅ |
+| 2. Appli Android | Projet Capacitor (dépôt `lupete3/urbanisme-mobile`), écrans, éditeur, appareil photo, PDF, notifications | ⏳ En cours : 2.1 projet ✅, 2.2 compte ✅, 2.3 dossiers ✅, 2.4 éditeur ✅, 2.5 envoi et PDF ✅ |
 | 3. Tests et Play Store | Test fermé (compte personnel : 12 testeurs pendant 14 jours), fiche store, publication | — |
 | 4. Paiements dans l'appli | Google Play Billing relié à `subscriptions` (quand le client passera au payant) | — |
 | 5. iPhone | Adaptations, Apple In-App Purchase, revue App Store | — |
