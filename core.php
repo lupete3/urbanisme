@@ -51,11 +51,12 @@ function recordConsent(int $uid,bool $an,bool $mk,string $src='web'):void{$v=leg
  db()->prepare('INSERT INTO consents(user_id,version,analytics,marketing,source,ip,created_at) VALUES(?,?,?,?,?,?,NOW())')->execute([$uid,$v,(int)$an,(int)$mk,$src,substr((string)($_SERVER['REMOTE_ADDR']??''),0,45)]);
  db()->prepare('UPDATE users SET consent_version=?,opt_analytics=?,opt_marketing=? WHERE id=?')->execute([$v,(int)$an,(int)$mk,$uid]);}
 const LEGAL_TITLES=['cgu'=>'Conditions générales d’utilisation','privacy'=>'Politique de confidentialité'];
-function legalVars():array{return ['{APP}'=>APP,'{RESPONSABLE}'=>setting('legal_owner','[À COMPLÉTER : nom ou raison sociale, adresse]'),'{CONTACT}'=>setting('legal_contact','[À COMPLÉTER : adresse e-mail de contact]'),'{HEBERGEUR}'=>setting('legal_host','[À COMPLÉTER : hébergeur et pays des serveurs]'),'{VERSION}'=>legalVersion()];}
+function legalVars():array{return ['{APP}'=>APP,'{RESPONSABLE}'=>(trim(setting('legal_owner',''))?:'[À COMPLÉTER : nom ou raison sociale, adresse]'),'{CONTACT}'=>(trim(setting('legal_contact',''))?:'[À COMPLÉTER : adresse e-mail de contact]'),'{HEBERGEUR}'=>(trim(setting('legal_host',''))?:'[À COMPLÉTER : hébergeur et pays des serveurs]'),'{VERSION}'=>legalVersion()];}
 function legalText(string $k):string{return strtr(setting('legal_'.$k,LEGAL_DEFAULTS[$k]??''),legalVars());}
 // Texte simple -> HTML : paragraphes séparés par une ligne vide, « ## » = titre, « - » = liste
 function legalHtml(string $t):string{$h='';foreach(preg_split("/\R{2,}/u",trim($t)) as $b){$b=trim($b);if($b==='')continue;
-  if(str_starts_with($b,'## '))$h.='<h3>'.e(substr($b,3)).'</h3>';
+  if(str_starts_with($b,'## ')){$l=preg_split('/\R/u',$b,2);$h.='<h3>'.e(trim(substr($l[0],3))).'</h3>';$r=trim($l[1]??'');if($r==='')continue;$b=$r;
+    if(str_starts_with($b,'- ')){$h.='<ul>';foreach(preg_split('/\R/u',$b) as $x)$h.='<li>'.e(ltrim($x,'- ')).'</li>';$h.='</ul>';}else $h.='<p>'.nl2br(e($b)).'</p>';}
   elseif(str_starts_with($b,'- ')){$h.='<ul>';foreach(preg_split('/\R/u',$b) as $l)$h.='<li>'.e(ltrim($l,'- ')).'</li>';$h.='</ul>';}
   else $h.='<p>'.nl2br(e($b)).'</p>';}return $h;}
 const LEGAL_DEFAULTS=[

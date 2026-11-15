@@ -1,5 +1,9 @@
 # Journal des évolutions
 
+## 15/11/2026 : Préparation du Play Store
+- Appli : clé de signature, première version AAB signée (1.0.8), icône et bannière, fiche et réponses aux questionnaires Google (`docs/play-store.md` du dépôt mobile).
+- Textes légaux : un titre « ## » suivi de son paragraphe s'affichait entièrement en titre, corrigé. Les champs responsable, contact et hébergeur laissés vides affichent « [À COMPLÉTER] » au lieu d'un blanc.
+
 ## 15/11/2026 : Notifications push
 - Envoi des notifications sur les téléphones via Firebase Cloud Messaging (`pushNotify()`), branché sur `notify()`. Inactif tant que la clé Firebase n'est pas réglée.
 - API `POST me/device`, désinscription à la déconnexion. Table `devices` (migration v10).
