@@ -2,7 +2,15 @@ Options -Indexes
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-<FilesMatch "^(config|lib)\.php$">
+# Transmet l'en-tête Authorization (jeton de l'application mobile) à PHP
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+# API mobile : /api/... -> api.php?r=...
+RewriteRule ^api/(.*)$ api.php?r=$1 [QSA,L]
+<FilesMatch "^(config|lib|core)\.php$">
+Require all denied
+</FilesMatch>
+# Documentation du projet : non publiée sur le site
+<FilesMatch "\.md$">
 Require all denied
 </FilesMatch>
 <IfModule mod_headers.c>

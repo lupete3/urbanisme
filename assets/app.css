@@ -83,3 +83,15 @@ html.splash-out #splash{opacity:0}
 .nav a.on{border-left-color:var(--green)}
 .hero .btn{background:#2e8b45;border-color:#2e8b45;color:#fff}
 .hero .btn:hover{filter:brightness(1.08)}
+
+/* Phase 1 : consentement, pages légales, accès */
+.cons{margin:10px 0 4px;display:flex;flex-direction:column;gap:8px}
+.ck{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4;cursor:pointer}
+.ck input{width:18px;height:18px;margin:2px 0 0;flex:none}
+.ll{font-size:13px}
+.auth .c:has(.legal){max-width:760px}
+.legal h3{margin:18px 0 6px}.legal ul{padding-left:20px}.legal p,.legal li{line-height:1.55}
+.acc{display:flex;gap:10px;align-items:center;border-left:4px solid var(--green);font-weight:600}
+.acc .i{color:var(--green);flex:none}
+.g2,.g3{display:grid;gap:0 14px;grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}}

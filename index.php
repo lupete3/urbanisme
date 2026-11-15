@@ -13,14 +13,26 @@ if($a==='login'||$a==='register'){
    if($r&&password_verify((string)$_POST['pass'],$r['pass_hash'])){session_regenerate_id(true);$_SESSION['uid']=$r['id'];$cn=db()->prepare('SELECT COUNT(*) FROM notifications WHERE user_id=? AND read_at IS NULL');$cn->execute([$r['id']]);$kn=(int)$cn->fetchColumn();if($kn)flash('info','Vous avez '.$kn.' nouvelle(s) notification(s).');go('dash');}
    usleep(500000);failed($tk);$err='Identifiants invalides.';}}
   else{$rk='reg|'.($_SERVER['REMOTE_ADDR']??'');failed($rk);if(throttled($rk))$err='Trop de tentatives : réessayez dans 15 minutes.';elseif(!filter_var($em,FILTER_VALIDATE_EMAIL)||strlen((string)$_POST['pass'])<10||trim((string)$_POST['name'])==='')$err='Email, nom et mot de passe (10+ caractères) requis.';
-   else try{db()->prepare("INSERT INTO users(email,pass_hash,name,role,created_at) VALUES(?,?,?,'declarant',NOW())")->execute([$em,password_hash((string)$_POST['pass'],PASSWORD_DEFAULT),mb_substr(trim((string)$_POST['name']),0,120)]);notifyStaff('Nouvel utilisateur inscrit : '.mb_substr(trim((string)$_POST['name']),0,60),'a=users');$err='Compte créé, connectez-vous.';$a='login';}catch(PDOException){$err='Email déjà utilisé.';}}}
+   elseif(empty($_POST['cgu']))$err='Vous devez accepter les conditions d’utilisation et la politique de confidentialité.';
+   else try{db()->prepare("INSERT INTO users(email,pass_hash,name,role,created_at) VALUES(?,?,?,'declarant',NOW())")->execute([$em,password_hash((string)$_POST['pass'],PASSWORD_DEFAULT),mb_substr(trim((string)$_POST['name']),0,120)]);recordConsent((int)db()->lastInsertId(),!empty($_POST['analytics']),!empty($_POST['marketing']));notifyStaff('Nouvel utilisateur inscrit : '.mb_substr(trim((string)$_POST['name']),0,60),'a=users');$err='Compte créé, connectez-vous.';$a='login';}catch(PDOException){$err='Email déjà utilisé.';}}}
  $reg=$a==='register';if($err)flash($err==='Compte créé, connectez-vous.'?'success':'danger',$err);
- page($reg?'Inscription':'Connexion','<h2>'.($reg?'Créer un compte':'Connexion').'</h2>'.$form(($reg?'Nom<input name="name" required>':'').'Email<input name="email" type="email" required>Mot de passe<input name="pass" type="password" required><button>'.($reg?'Créer':'Entrer').'</button>').'<p><a href="index.php?a='.($reg?'login':'register').'">'.($reg?'J\'ai déjà un compte':'Créer un compte').'</a></p><p class="zl"><a href="'.e(ZONE).'" target="_blank" rel="noopener">Voir dans quelle zone se trouve votre parcelle ↗</a></p>');exit;}
+ page($reg?'Inscription':'Connexion','<h2>'.($reg?'Créer un compte':'Connexion').'</h2>'.$form(($reg?'Nom<input name="name" required>':'').'Email<input name="email" type="email" required>Mot de passe<input name="pass" type="password" required>'.($reg?consentBoxes(false,false):'').'<button>'.($reg?'Créer':'Entrer').'</button>').'<p><a href="index.php?a='.($reg?'login':'register').'">'.($reg?'J\'ai déjà un compte':'Créer un compte').'</a></p><p class="zl"><a href="'.e(ZONE).'" target="_blank" rel="noopener">Voir dans quelle zone se trouve votre parcelle ↗</a></p><p class="zl">'.legalLinks().'</p>');exit;}
+
+// Pages légales publiques (exigées par les stores : lien vers la politique et la suppression de compte)
+if(isset(LEGAL_TITLES[$a])){page(LEGAL_TITLES[$a],'<div class="legal"><h2>'.e(LEGAL_TITLES[$a]).'</h2><p class="mu">Version '.e(legalVersion()).'</p>'.legalHtml(legalText($a)).'<p><a href="index.php">← Retour</a></p></div>');exit;}
+if($a==='suppression'){page('Supprimer mon compte','<div class="legal"><h2>Supprimer mon compte '.APP.'</h2><p>Vous pouvez supprimer votre compte et toutes les données associées (dossiers, images, bibliothèque, consentements) à tout moment :</p><ul><li>sur le site ou dans l’application : <b>Mon profil → Supprimer mon compte</b> ;</li><li>ou en écrivant à '.e(legalVars()['{CONTACT}']).' depuis l’adresse e-mail de votre compte.</li></ul><p>La suppression est définitive et intervient immédiatement (sous 30 jours maximum en cas de demande par e-mail).</p><p><a href="index.php?a=login">Se connecter</a></p></div>');exit;}
 
 $u=need();
 
+if($a==='consent'){
+ if($post){if(empty($_POST['cgu'])){flash('danger','Vous devez accepter les conditions pour utiliser '.APP.'.');go('consent');}
+  recordConsent((int)$u['id'],!empty($_POST['analytics']),!empty($_POST['marketing']));flash('success','Merci, vos choix sont enregistrés.');go('dash');}
+ page('Conditions d’utilisation','<div class="c legal"><h2>Avant de continuer</h2><p>'.APP.' a besoin de votre accord pour traiter vos données personnelles :</p><ul><li><b>Données utilisées</b> : nom, e-mail, téléphone (facultatif), adresse et parcelle du projet, photos et plans importés.</li><li><b>Pourquoi</b> : créer vos dossiers d’urbanisme et générer le PDF, gérer votre compte et votre accès.</li><li><b>Vos droits</b> : accès, rectification, suppression, portabilité, retrait du consentement, depuis « Mon profil ».</li></ul>'
+ .$form(consentBoxes((bool)$u['opt_analytics'],(bool)$u['opt_marketing']).'<button>'.icon('check').'Continuer</button>').'</div>');exit;}
+if(needsConsent($u))go('consent');
+
 if($a==='dash'){
- if($post&&isset($_POST['titre'])){$tp=(string)($_POST['type']??'DP');if(!isset(STEPS[$tp]))$tp='DP';$s=db()->prepare('INSERT INTO dossiers(user_id,type,titre,adresse,parcelle,created_at) VALUES(?,?,?,?,?,NOW())');$s->execute([$u['id'],$tp,mb_substr(trim((string)$_POST['titre']),0,150),mb_substr(trim((string)$_POST['adresse']),0,255),mb_substr(trim((string)$_POST['parcelle']),0,40)]);flash('success','Dossier créé : complétez les étapes une par une.');go('dossier','&id='.db()->lastInsertId());}
+ if($post&&isset($_POST['titre'])){$id=createDossier($u,(string)($_POST['type']??'DP'),(string)$_POST['titre'],(string)$_POST['adresse'],(string)$_POST['parcelle']);flash('success','Dossier créé : complétez les étapes une par une.');go('dossier','&id='.$id);}
  $q=trim((string)($_GET['q']??''));$st=(string)($_GET['st']??'');$pg=max(1,(int)($_GET['p']??1));$per=9;$w='user_id=?';$args=[$u['id']];
  if($q!==''){$w.=' AND (titre LIKE ? OR adresse LIKE ?)';array_push($args,"%$q%","%$q%");}
  if(in_array($st,['brouillon','en_attente','paye'],true)){$w.=' AND status=?';$args[]=$st;}
@@ -29,6 +41,7 @@ if($a==='dash'){
  foreach($s as $d){$nr=count(reqImg(ty($d)));$h.='<a class="dc" href="index.php?a=dossier&id='.$d['id'].'"><div class="l"><div class="ph" style="margin:0"><b>'.e($d['titre']).'</b>'.badge($d['status']).'</div><span class="mu">'.e($d['adresse']).'</span><div class="bar"><i style="width:'.round($d['done']/$nr*100).'%"></i></div><small>'.(int)$d['done'].' / '.$nr.' pièces obligatoires complétées</small></div><div class="r" title="'.e(TYPES[ty($d)][0]).'">'.ty($d).'</div></a>';}
  $n=db()->prepare('SELECT status,COUNT(*) FROM dossiers WHERE user_id=? GROUP BY status');$n->execute([$u['id']]);
  page('Accueil','<div class="c hero"><div><h2>Bienvenue sur '.APP.'</h2><p class="mu">Constituez vous-même votre dossier de demande d’autorisation d’urbanisme, étape par étape.</p></div><a class="btn" href="'.e(ZONE).'" target="_blank" rel="noopener">'.icon('search').'Voir dans quelle zone se trouve votre parcelle ↗</a></div>'
+ .'<div class="c acc">'.icon('check').'<span>'.e(access($u)['text']).'</span></div>'
  .'<div class="ph"><div><h2>Mes dossiers</h2><p class="mu">Constituez et suivez vos dossiers d’urbanisme.</p></div></div>'.stats($n->fetchAll(PDO::FETCH_KEY_PAIR))
  .'<details class="c" id="new"'.(isset($_GET['new'])?' open':'').'><summary class="btn">'.icon('plus').'Nouveau dossier</summary><div style="margin-top:14px">'.$form('<label>Type de dossier</label><select name="type">'.implode('',array_map(fn($k)=>'<option value="'.$k.'"'.(($_GET['new']??'')===$k?' selected':'').'>'.e(TYPES[$k][0]).' ('.$k.')</option>',array_keys(STEPS))).'</select><label>Intitulé du projet</label><input name="titre" placeholder="Ex : Aménagement des combles" required><label>Adresse du projet</label><input name="adresse" required><label>Numéro de parcelle</label><input name="parcelle" required><button>'.icon('check').'Créer le dossier</button>').'</div></details>'
  .tools('dash',$q,$st,'Rechercher par intitulé ou adresse…').($h?'<div class="grid">'.$h.'</div>':'<div class="c empty">'.icon('file').'<p>'.($q!==''||$st!==''?'Aucun dossier ne correspond à votre recherche.':'Aucun dossier pour le moment. Créez-en un pour commencer.').'</p></div>').pager($tot,$per,$pg,'index.php?a=dash&q='.urlencode($q).'&st='.urlencode($st)));exit;}
@@ -48,32 +61,29 @@ if($a==='profile'){
   elseif($act==='pass'){if(!password_verify((string)($_POST['cur']??''),$u['pass_hash']))flash('danger','Le mot de passe actuel est incorrect.');
    elseif(strlen((string)($_POST['new']??''))<10||($_POST['new']??'')!==($_POST['new2']??''))flash('danger','Nouveau mot de passe : 10 caractères minimum, identique dans les deux champs.');
    else{db()->prepare('UPDATE users SET pass_hash=? WHERE id=?')->execute([password_hash((string)$_POST['new'],PASSWORD_DEFAULT),$u['id']]);session_regenerate_id(true);flash('success','Mot de passe modifié.');}}
-  elseif($act==='del'){$pd=db()->prepare("SELECT COUNT(*) FROM dossiers WHERE user_id=? AND status='paye'");$pd->execute([$u['id']]);$ad=(int)db()->query("SELECT COUNT(*) FROM users WHERE role='admin'")->fetchColumn();
-   if(!password_verify((string)($_POST['cur']??''),$u['pass_hash']))flash('danger','Le mot de passe est incorrect : compte non supprimé.');
-   elseif((int)$pd->fetchColumn()>0)flash('danger','Des dossiers payés sont rattachés à ce compte : contactez l’administrateur pour le supprimer.');
-   elseif($u['role']==='admin'&&$ad<2)flash('danger','Vous êtes le seul administrateur : nommez-en un autre avant de supprimer ce compte.');
-   else{$ds=db()->prepare('SELECT id FROM dossiers WHERE user_id=?');$ds->execute([$u['id']]);foreach($ds->fetchAll(PDO::FETCH_COLUMN) as $did){foreach(pieces((int)$did) as $pc)foreach(['file','sheet'] as $k)if(!empty($pc[$k]))@unlink(DATA.'/img/'.basename($pc[$k]));}
-    $ls=db()->prepare('SELECT file FROM library WHERE user_id=?');$ls->execute([$u['id']]);foreach($ls->fetchAll(PDO::FETCH_COLUMN) as $lf)@unlink(DATA.'/lib/'.basename($lf));
-    foreach(['DELETE FROM dossiers WHERE user_id=?','DELETE FROM library WHERE user_id=?','DELETE FROM users WHERE id=?'] as $q)db()->prepare($q)->execute([$u['id']]);
-    session_destroy();header('Location: index.php?a=login');exit;}}
+  elseif($act==='del'){if(!password_verify((string)($_POST['cur']??''),$u['pass_hash']))flash('danger','Le mot de passe est incorrect : compte non supprimé.');
+   elseif($er=deleteAccount($u))flash('danger',$er);
+   else{session_destroy();header('Location: index.php?a=login');exit;}}
+  elseif($act==='consent'){recordConsent((int)$u['id'],!empty($_POST['analytics']),!empty($_POST['marketing']));flash('success','Vos choix sont enregistrés.');}
   go('profile');}
  $rl=['declarant'=>'Déclarant','gestionnaire'=>'Gestionnaire','admin'=>'Administrateur'][$u['role']];
  page('Mon profil','<div class="ph"><div><h2>Mon profil</h2><p class="mu">Rôle : '.e($rl).' · inscrit le '.e(substr($u['created_at'],0,10)).'</p></div></div>'
  .'<div class="c"><h3>Informations personnelles</h3>'.$form('<input type="hidden" name="act" value="info"><label>Nom complet</label><input name="name" value="'.e($u['name']).'" required><label>Adresse e-mail</label><input type="email" name="email" value="'.e($u['email']).'" required><label>Téléphone (facultatif)</label><input name="phone" value="'.e($u['phone']??'').'" autocomplete="tel"><button>'.icon('check').'Enregistrer</button>').'</div>'
  .'<div class="c"><h3>Mot de passe</h3>'.$form('<input type="hidden" name="act" value="pass"><label>Mot de passe actuel</label><input type="password" name="cur" autocomplete="current-password" required><label>Nouveau mot de passe (10 caractères minimum)</label><input type="password" name="new" minlength="10" autocomplete="new-password" required><label>Confirmer le nouveau mot de passe</label><input type="password" name="new2" minlength="10" autocomplete="new-password" required><button>'.icon('check').'Modifier le mot de passe</button>').'</div>'
- .'<div class="c" style="border-color:var(--er)"><h3>Supprimer mon compte</h3><p class="mu">Supprime définitivement votre compte, vos dossiers non payés, leurs images et vos objets de bibliothèque.</p>'.$form('<input type="hidden" name="act" value="del"><label>Mot de passe pour confirmer</label><input type="password" name="cur" required><button class="danger" data-type="danger" data-ok="Supprimer mon compte" data-confirm="Supprimer définitivement votre compte et vos données ? Cette action est irréversible.">'.icon('trash').'Supprimer mon compte</button>').'</div>');exit;}
+ .'<div class="c"><h3>Mes données et consentements</h3><p class="hp">Conditions acceptées : version '.e((string)$u['consent_version']).'. '.legalLinks().'</p>'.$form('<input type="hidden" name="act" value="consent"><input type="hidden" name="cgu" value="1">'.consentBoxes((bool)$u['opt_analytics'],(bool)$u['opt_marketing'],false).'<button>'.icon('check').'Enregistrer mes choix</button>').'<p style="margin-top:10px"><a class="b ghost" href="index.php?a=export">'.icon('dl').'Télécharger mes données (JSON)</a></p></div>'
+ .'<div class="c" style="border-color:var(--er)"><h3>Supprimer mon compte</h3><p class="mu">Supprime définitivement votre compte, tous vos dossiers, leurs images, vos objets de bibliothèque et vos consentements.</p>'.$form('<input type="hidden" name="act" value="del"><label>Mot de passe pour confirmer</label><input type="password" name="cur" required><button class="danger" data-type="danger" data-ok="Supprimer mon compte" data-confirm="Supprimer définitivement votre compte et vos données ? Cette action est irréversible.">'.icon('trash').'Supprimer mon compte</button>').'</div>');exit;}
+if($a==='export'){header('Content-Type: application/json; charset=utf-8');header('Content-Disposition: attachment; filename="mes-donnees-DOSSIERUrba.json"');echo json_encode(exportData($u),JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);exit;}
 if($a==='reopen'&&$post){$d=dossier((int)($_POST['id']??0));
- if($u['id']==$d['user_id']&&$d['status']==='en_attente'){db()->prepare("UPDATE dossiers SET status='brouillon' WHERE id=?")->execute([$d['id']]);flash('success','Dossier rouvert : modifiez-le puis soumettez-le à nouveau.');notifyStaff('Dossier retiré pour modification : '.$d['titre'].' ('.$u['name'].')','a=dossier&id='.(int)$d['id']);}else flash('danger','Action impossible sur ce dossier.');
+ if(reopenDossier($u,$d))flash('success','Dossier rouvert : modifiez-le puis soumettez-le à nouveau.');else flash('danger','Action impossible sur ce dossier.');
  go('dossier','&id='.$d['id']);}
 if($a==='deldoss'&&$post){$d=dossier((int)($_POST['id']??0));$mine=$u['id']==$d['user_id'];
- if(($mine&&$d['status']!=='paye')||$u['role']==='admin'){foreach(pieces((int)$d['id']) as $pc)foreach(['file','sheet'] as $k)if(!empty($pc[$k]))@unlink(DATA.'/img/'.basename($pc[$k]));
-  db()->prepare('DELETE FROM dossiers WHERE id=?')->execute([$d['id']]);flash('success','Dossier supprimé.');go($mine?'dash':'admin');}
+ if(deleteDossier($u,$d)){flash('success','Dossier supprimé.');go($mine?'dash':'admin');}
  flash('danger','Suppression impossible : un dossier payé ne peut pas être supprimé.');go('dossier','&id='.$d['id']);}
 
 if($a==='dossier'){
  $d=dossier((int)($_GET['id']??0));$own=$u['id']==$d['user_id'];$edit=$own&&$d['status']==='brouillon';$ty=ty($d);$tc=txtCode($ty);
- if($post&&$edit){if(isset($_POST['description'])){db()->prepare('UPDATE dossiers SET description=? WHERE id=?')->execute([mb_substr((string)$_POST['description'],0,4000),$d['id']]);db()->prepare("UPDATE pieces SET sheet=NULL WHERE dossier_id=? AND code=?")->execute([$d['id'],(string)$tc]);flash('success','Description enregistrée.');}
-  if(isset($_POST['go_submit'])){if(complete(dossier((int)$d['id']),pieces((int)$d['id']))){db()->prepare("UPDATE dossiers SET status='en_attente' WHERE id=?")->execute([$d['id']]);flash('success','Dossier soumis : il sera ouvert dès la validation de votre paiement.');notifyStaff('Nouveau dossier soumis : '.$d['titre'].' ('.$u['name'].')','a=dossier&id='.(int)$d['id']);}else flash('danger','Le dossier est incomplet : complétez toutes les étapes.');}
+ if($post&&$edit){if(isset($_POST['description'])){setDescription($d,(string)$_POST['description']);flash('success','Description enregistrée.');}
+  if(isset($_POST['go_submit'])){[$ok,$msg]=submitDossier($u,dossier((int)$d['id']));flash($ok?'success':'danger',$msg);}
   go('dossier','&id='.$d['id']);}
  $d=dossier((int)$d['id']);$p=pieces((int)$d['id']);$list=[];foreach(steps($ty) as $c=>[$t,$k,,$opt])if(!$opt||!empty($p[$c]['sheet']))$list[]="$c : $t";
  $cfg=['id'=>$d['id'],'t'=>csrf(),'edit'=>$edit,'ty'=>$ty,'head'=>HEAD[$ty],'txt'=>$tc?[$tc,mb_strtoupper(steps($ty)[$tc][0])]:null,'desc'=>$d['description'],'list'=>$list,'meta'=>['titre'=>$d['titre'],'adresse'=>$d['adresse'],'parcelle'=>$d['parcelle'],'owner'=>$own?$u['name']:'']];
@@ -85,7 +95,7 @@ if($a==='dossier'){
   else{$h.='<p class="hp">'.e($hp).'</p>';$h.=$edit?$form('<textarea name="description" rows="6" placeholder="'.($ty==='PD'?'Décrivez les précautions prises pendant la démolition…':'Décrivez vos travaux : matériaux, couleurs, dimensions…').'">'.e($d['description']).'</textarea><button>Enregistrer</button>'):'<p>'.nl2br(e($d['description'])).'</p>';}
   $h.='</div>';}
 $h.='</div><p style="margin-top:18px"><a class="b pdfgo" href="index.php?a=pdf&id='.$d['id'].'">'.icon('dl').($d['status']==='paye'?'Télécharger le PDF complet':'Aperçu PDF (filigrané)').'</a> ';
- if($edit){$mi=array_diff(missing($d,$p),['PDF']);$h.=$mi?'<p class="mu">Pièces obligatoires à compléter avant l\'envoi : '.e(implode(', ',$mi)).'</p>':$form('<input type="hidden" name="go_submit" value="1"><button class="submitgo">Soumettre le dossier pour validation</button>');}
+ if($edit){$mi=array_diff(missing($d,$p),['PDF']);$h.=$mi?'<p class="mu">Pièces obligatoires à compléter avant l\'envoi : '.e(implode(', ',$mi)).'</p>':$form('<input type="hidden" name="go_submit" value="1">'.(($ac=access($u))['ok']?'<p class="hp">'.e($ac['text']).'</p><button class="submitgo">'.icon('check').'Finaliser le dossier et obtenir le PDF</button>':'<p class="hp">'.e($ac['text']).(($pr=dossierPrice($d))!==''?' Prix : '.e($pr).'.':'').'</p><button class="submitgo">Soumettre le dossier pour validation</button>'));}
  $pf=fn($ac,$bt)=>'<form method="post" action="index.php?a='.$ac.'" style="display:inline"><input type="hidden" name="t" value="'.csrf().'"><input type="hidden" name="id" value="'.$d['id'].'">'.$bt.'</form>';$act='';
  if($own&&$d['status']==='en_attente')$act.=$pf('reopen','<button class="ghost" data-confirm="Le dossier repasse en brouillon pour être modifié. Vous devrez le soumettre à nouveau." data-ok="Modifier le dossier">'.icon('edit').'Modifier le dossier</button>');
  if(($own&&$d['status']!=='paye')||$u['role']==='admin')$act.=$pf('deldoss','<button class="danger" data-type="danger" data-ok="Supprimer" data-confirm="Supprimer définitivement ce dossier et toutes ses pièces ? Cette action est irréversible.">'.icon('trash').'Supprimer le dossier</button>');
@@ -97,27 +107,13 @@ if($a==='edit'){$d=dossier((int)($_GET['id']??0));$c=(string)($_GET['c']??'');$t
  page('Éditeur '.$c,'<h2>'.$c.' – '.e($st[0]).'</h2><p class="hp">'.e($st[2]).'</p><div id="ed" data-cfg="'.e(json_encode($cfg)).'"></div>','assets/editor.js');exit;}
 
 if($a==='save'&&$post){header('Content-Type: application/json');$d=dossier((int)($_POST['id']??0));$c=(string)($_POST['c']??'');
- if($u['id']!=$d['user_id']||$d['status']!=='brouillon'||!in_array($c,codes(ty($d)),true)){http_response_code(403);echo '{"ok":0,"err":"refusé"}';exit;}
- $sh=savejpeg($_FILES['sheet']??null,1700);$ba=savejpeg($_FILES['base']??null,2400);$data=(string)($_POST['data']??'{}');
- if(!$sh||strlen($data)>200000||json_decode($data)===null){echo '{"ok":0,"err":"données invalides"}';exit;}
- $o=pieces((int)$d['id'])[$c]??null;
- db()->prepare('INSERT INTO pieces(dossier_id,code,file,sheet,data) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE file=COALESCE(VALUES(file),file),sheet=VALUES(sheet),data=VALUES(data)')->execute([$d['id'],$c,$ba,$sh,$data]);
- if($o){if($o['sheet'])@unlink(DATA.'/img/'.basename($o['sheet']));if($ba&&$o['file'])@unlink(DATA.'/img/'.basename($o['file']));}
- $tc=txtCode(ty($d));if($tc&&$c===$tc&&isset($_POST['desc']))db()->prepare('UPDATE dossiers SET description=? WHERE id=?')->execute([mb_substr((string)$_POST['desc'],0,4000),$d['id']]);
- if($c!==ty($d).'0'&&$c!==$tc)flash('success','Étape '.$c.' enregistrée.');
+ if($er=savePiece($u,$d,$c,$_FILES['sheet']??null,$_FILES['base']??null,(string)($_POST['data']??'{}'),isset($_POST['desc'])?(string)$_POST['desc']:null)){http_response_code($er==='refusé'?403:200);echo json_encode(['ok'=>0,'err'=>$er]);exit;}
+ if($c!==ty($d).'0'&&$c!==txtCode(ty($d)))flash('success','Étape '.$c.' enregistrée.');
  echo '{"ok":1}';exit;}
 
-if($a==='img'||$a==='sheet'){$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$c=(string)($_GET['c']??'');$f=$p[$c][$a==='img'?'file':'sheet']??null;if(!$f)exit;$path=DATA.'/img/'.basename($f);
- header('Content-Type: image/jpeg');header('Cache-Control: private, max-age=60');
- if($a==='sheet'&&$d['status']!=='paye'&&($im=@imagecreatefromjpeg($path))){watermark($im,imagesx($im),imagesy($im),'BROUILLON');imagejpeg($im,null,85);imagedestroy($im);exit;}
- readfile($path);exit;}
+if($a==='img'||$a==='sheet'){$d=dossier((int)($_GET['id']??0));sheetOut($d,(string)($_GET['c']??''),$a==='img'?'file':'sheet');exit;}
 
-if($a==='pdf'){try{$d=dossier((int)($_GET['id']??0));$p=pieces((int)$d['id']);$wm=$d['status']!=='paye';$pdf=new MiniPdf;$n=0;
- foreach(codes(ty($d)) as $c){if(empty($p[$c]['sheet']))continue;$path=DATA.'/img/'.basename($p[$c]['sheet']);
-  if($wm){$im=imagecreatefromjpeg($path);watermark($im,imagesx($im),imagesy($im));ob_start();imagejpeg($im,null,85);imagedestroy($im);$j=ob_get_clean();}else $j=file_get_contents($path);
-  $g=getimagesizefromstring($j);$pdf->add($j,$g[0],$g[1]);$n++;}
- if(!$n)throw new Exception('Aucune planche : ouvrez les éditeurs et enregistrez chaque étape.');
- $out=$pdf->out();header('Content-Type: application/pdf');header('Content-Disposition: attachment; filename="DOSSIERUrba-'.ty($d).'-'.(int)$d['id'].($wm?'-apercu':'').'.pdf"');header('Cache-Control: private, no-store');echo $out;exit;}
+if($a==='pdf'){try{$d=dossier((int)($_GET['id']??0));[$out,$fn]=dossierPdf($d);header('Content-Type: application/pdf');header('Content-Disposition: attachment; filename="'.$fn.'"');header('Cache-Control: private, no-store');echo $out;exit;}
  catch(Throwable $x){error_log((string)$x);flash('danger','Génération du PDF impossible : '.$x->getMessage());go('dossier','&id='.(int)($_GET['id']??0));}}
 
 if($a==='lib'){header('Content-Type: application/json');$s=db()->prepare('SELECT id,name,wcm,hcm,shared,(user_id=?) AS mine FROM library WHERE user_id=? OR shared=1 ORDER BY id DESC');$s->execute([$u['id'],$u['id']]);echo json_encode($s->fetchAll());exit;}
@@ -133,13 +129,14 @@ if($a==='libsave'&&$post){header('Content-Type: application/json');$f=$_FILES['p
  echo '{"ok":1}';exit;}
 
 if($a==='admin'){need(true);
- if($post&&isset($_POST['id'])){$st=$_POST['st']==='paye'?'paye':'en_attente';db()->prepare('UPDATE dossiers SET status=? WHERE id=?')->execute([$st,(int)$_POST['id']]);$dd=db()->prepare('SELECT user_id,titre FROM dossiers WHERE id=?');$dd->execute([(int)$_POST['id']]);if($dd=$dd->fetch())notify((int)$dd['user_id'],$st==='paye'?'Paiement validé pour « '.$dd['titre'].' » : votre PDF complet est disponible.':'La validation de « '.$dd['titre'].' » a été annulée.','a=dossier&id='.(int)$_POST['id']);flash('success',$st==='paye'?'Paiement validé : le filigrane est retiré du PDF.':'Validation annulée : le filigrane est rétabli.');go('admin');}
+ if($post&&isset($_POST['id'])){$id=(int)$_POST['id'];if($_POST['st']==='paye'){unlockDossier($id,'paiement');flash('success','Paiement validé : le filigrane est retiré du PDF.');}
+  else{db()->prepare("UPDATE dossiers SET status='en_attente',unlocked_via=NULL,unlocked_at=NULL WHERE id=?")->execute([$id]);$dd=db()->prepare('SELECT user_id,titre FROM dossiers WHERE id=?');$dd->execute([$id]);if($dd=$dd->fetch())notify((int)$dd['user_id'],'La validation de « '.$dd['titre'].' » a été annulée.','a=dossier&id='.$id);flash('success','Validation annulée : le filigrane est rétabli.');}go('admin');}
  $q=trim((string)($_GET['q']??''));$st=(string)($_GET['st']??'');$pg=max(1,(int)($_GET['p']??1));$per=10;$w='1=1';$args=[];
  if($q!==''){$w.=' AND (d.titre LIKE ? OR u.name LIKE ? OR u.email LIKE ?)';array_push($args,"%$q%","%$q%","%$q%");}
  if(in_array($st,['brouillon','en_attente','paye'],true)){$w.=' AND d.status=?';$args[]=$st;}
  $c=db()->prepare("SELECT COUNT(*) FROM dossiers d JOIN users u ON u.id=d.user_id WHERE $w");$c->execute($args);$tot=(int)$c->fetchColumn();
  $s=db()->prepare("SELECT d.*,u.name,u.email FROM dossiers d JOIN users u ON u.id=d.user_id WHERE $w ORDER BY (d.status='en_attente') DESC,d.id DESC LIMIT $per OFFSET ".(($pg-1)*$per));$s->execute($args);$r='';
- foreach($s as $d){$pa=$d['status']==='paye';$r.='<tr><td><a href="index.php?a=dossier&id='.$d['id'].'"><b>'.e($d['titre']).'</b></a><br><small><span class="tk">'.ty($d).'</span> '.e($d['adresse']).'</small></td><td>'.e($d['name']).'<br><small>'.e($d['email']).'</small></td><td>'.badge($d['status']).'</td><td>'.e(substr($d['created_at'],0,10)).'</td><td>';
+ foreach($s as $d){$pa=$d['status']==='paye';$r.='<tr><td><a href="index.php?a=dossier&id='.$d['id'].'"><b>'.e($d['titre']).'</b></a><br><small><span class="tk">'.ty($d).'</span> '.e($d['adresse']).'</small></td><td>'.e($d['name']).'<br><small>'.e($d['email']).'</small></td><td>'.badge($d['status']).($d['unlocked_via']?'<br><small>'.e($d['unlocked_via']).'</small>':'').'</td><td>'.e(substr($d['created_at'],0,10)).'</td><td>';
   if($d['status']!=='brouillon')$r.=$form('<input type="hidden" name="id" value="'.$d['id'].'"><input type="hidden" name="st" value="'.($pa?'en_attente':'paye').'"><button class="'.($pa?'ghost':'').'" data-confirm="'.($pa?'Annuler la validation du paiement ?':'Confirmer la réception du paiement ?').'">'.icon($pa?'undo':'check').($pa?'Annuler':'Valider le paiement').'</button>');$r.='</td></tr>';}
  page('Gestion','<div class="ph"><div><h2>Gestion des dossiers</h2><p class="mu">Validez les paiements pour retirer le filigrane et autoriser le téléchargement.</p></div></div>'.stats(db()->query('SELECT status,COUNT(*) FROM dossiers GROUP BY status')->fetchAll(PDO::FETCH_KEY_PAIR)).tools('admin',$q,$st,'Dossier, déclarant ou e-mail…')
  .($r?'<div class="c" style="padding:0;overflow:auto"><table><tr><th>Dossier</th><th>Déclarant</th><th>Statut</th><th>Créé le</th><th></th></tr>'.$r.'</table></div>':'<div class="c empty">Aucun dossier trouvé.</div>').pager($tot,$per,$pg,'index.php?a=admin&q='.urlencode($q).'&st='.urlencode($st)));exit;}
@@ -155,5 +152,46 @@ if($a==='library'){need(false,true);
  page('Bibliothèque','<div class="ph"><div><h2>Bibliothèque partagée</h2><p class="mu">Les images et émojis ajoutés ici sont proposés à tous les utilisateurs dans l’éditeur.</p></div></div>'
  .'<div class="c"><h3>Images partagées</h3><p class="hp">Fenêtres, portes, enseignes, arbres, véhicules… Importez une photo : l’arrière-plan peut être retiré automatiquement.</p><div id="libadm" data-cfg="'.e(json_encode(['t'=>csrf()])).'"></div></div>'
  .'<div class="c"><h3>Émojis et symboles</h3>'.$form('<label>Émojis proposés dans l’éditeur, séparés par des espaces</label><textarea name="emojis" rows="3" style="font-size:22px">'.e(implode(' ',emojis())).'</textarea><button>'.icon('check').'Enregistrer</button>').'</div>','assets/editor.js');exit;}
+if($a==='access'){need(false,true);
+ if($post){$act=(string)($_POST['act']??'');
+  if($act==='cfg'){foreach(array_keys(ACC_DEFAULTS) as $k)if(isset($_POST[$k])){$v=mb_substr(trim((string)$_POST[$k]),0,255);
+    if(in_array($k,['mode','after'],true)&&!isset(MODES[$v]))continue;if($k==='free_until'&&$v!==''&&!preg_match('/^\d{4}-\d{2}-\d{2}$/',$v))continue;
+    if(preg_match('/^(price_|sub_)/',$k)&&$v!==''){$v=str_replace(',','.',$v);if(!is_numeric($v))continue;}
+    if(in_array($k,['quota_n','trial_days'],true))$v=(string)max(0,min(3650,(int)$v));setSetting('acc_'.$k,$v);}flash('success','Réglages d’accès enregistrés.');}
+  elseif($act==='grant'){$s=db()->prepare('SELECT id,name FROM users WHERE email=?');$s->execute([strtolower(trim((string)($_POST['email']??'')))]);$x=$s->fetch();$j=(int)($_POST['days']??0);
+   if(!$x)flash('danger','Aucun utilisateur avec cet e-mail.');
+   else{db()->prepare("INSERT INTO subscriptions(user_id,plan,platform,status,starts_at,ends_at,note,created_at) VALUES(?,'offert','admin','active',NOW(),".($j>0?'DATE_ADD(NOW(),INTERVAL '.$j.' DAY)':'NULL').",?,NOW())")->execute([$x['id'],mb_substr(trim((string)($_POST['note']??'')),0,255)]);notify((int)$x['id'],'Un accès '.APP.' vous a été offert'.($j>0?' pour '.$j.' jours':'').'.','a=dash');flash('success','Accès offert à '.$x['name'].'.');}}
+  elseif($act==='revoke'){db()->prepare("UPDATE subscriptions SET status='revoque',ends_at=NOW() WHERE id=?")->execute([(int)($_POST['id']??0)]);flash('success','Accès retiré.');}
+  go('access');}
+ $sel=fn($n,$v,$opts)=>'<select name="'.$n.'">'.implode('',array_map(fn($k)=>'<option value="'.$k.'"'.($k===$v?' selected':'').'>'.e($opts[$k]).'</option>',array_keys($opts))).'</select>';
+ $in=fn($n,$l,$ph='',$t='text')=>'<label>'.$l.'</label><input type="'.$t.'" name="'.$n.'" value="'.e(acc($n)).'" placeholder="'.e($ph).'">';
+ $cur=accMode();$st=db()->query("SELECT COALESCE(unlocked_via,'—') v,COUNT(*) n FROM dossiers WHERE status='paye' GROUP BY v")->fetchAll(PDO::FETCH_KEY_PAIR);
+ $subs=db()->query("SELECT s.*,u.name,u.email FROM subscriptions s JOIN users u ON u.id=s.user_id WHERE s.status='active' AND (s.ends_at IS NULL OR s.ends_at>NOW()) ORDER BY s.id DESC LIMIT 100")->fetchAll();$r='';
+ foreach($subs as $x)$r.='<tr><td><b>'.e($x['name']).'</b><br><small>'.e($x['email']).'</small></td><td>'.e($x['plan']).' · '.e($x['platform']).'<br><small>'.e($x['note']).'</small></td><td>'.($x['ends_at']?e(date('d/m/Y',strtotime($x['ends_at']))):'Sans limite').'</td><td>'.$form('<input type="hidden" name="act" value="revoke"><input type="hidden" name="id" value="'.$x['id'].'"><button class="ghost" data-confirm="Retirer cet accès ?">Retirer</button>').'</td></tr>';
+ page('Accès et tarifs','<div class="ph"><div><h2>Accès et tarifs</h2><p class="mu">Formule appliquée aujourd’hui : <b>'.e(MODES[$cur]).'</b>. Les dossiers déjà débloqués le restent quel que soit le changement.</p></div></div>'
+ .'<div class="c"><h3>Formule d’accès</h3>'.$form('<input type="hidden" name="act" value="cfg"><label>Formule</label>'.$sel('mode',acc('mode'),MODES)
+  .'<div class="g2"><div>'.$in('free_until','Fin de la gratuité (facultatif)','','date').'</div><div><label>Formule après la gratuité</label>'.$sel('after',acc('after'),array_diff_key(MODES,['gratuit'=>1])).'</div></div>'
+  .'<div class="g2"><div>'.$in('quota_n','Limité : nombre de dossiers gratuits','3','number').'</div><div><label>Limité : période</label>'.$sel('quota_period',acc('quota_period'),['mois'=>'Par mois','total'=>'Au total']).'</div></div>'
+  .$in('trial_days','Essai : durée en jours après l’inscription','30','number')
+  .'<h3 style="margin-top:14px">Tarifs (en euros)</h3><div class="g3"><div>'.$in('price_DP','Dossier DP').'</div><div>'.$in('price_AP','Dossier AP').'</div><div>'.$in('price_PD','Dossier PD').'</div></div>'
+  .'<div class="g2"><div>'.$in('sub_month','Abonnement mensuel').'</div><div>'.$in('sub_year','Abonnement annuel').'</div></div>'
+  .'<h3 style="margin-top:14px">Application mobile</h3><p class="hp">Identifiants des produits à créer dans Google Play / App Store (phase mobile).</p><div class="g2"><div>'.$in('prod_sub_month','Produit abonnement mensuel','dossierurba_mensuel').'</div><div>'.$in('prod_sub_year','Produit abonnement annuel','dossierurba_annuel').'</div></div>'
+  .'<div class="g2"><div>'.$in('app_min_android','Version minimale Android','1.0.0').'</div><div>'.$in('app_min_ios','Version minimale iPhone','1.0.0').'</div></div>'.$in('app_message','Message affiché dans l’application (facultatif)')
+  .'<button>'.icon('check').'Enregistrer</button>').'</div>'
+ .'<div class="c"><h3>Dossiers débloqués par mode</h3><p>'.($st?implode(' · ',array_map(fn($k,$v)=>e($k).' : <b>'.(int)$v.'</b>',array_keys($st),$st)):'Aucun pour le moment.').'</p></div>'
+ .'<div class="c"><h3>Abonnements et accès offerts</h3>'.$form('<input type="hidden" name="act" value="grant"><div class="g3"><div><label>E-mail de l’utilisateur</label><input type="email" name="email" required></div><div><label>Durée en jours (0 = sans limite)</label><input type="number" name="days" value="30" min="0"></div><div><label>Note</label><input name="note" placeholder="Ex : partenaire, test…"></div></div><button>'.icon('plus').'Offrir un accès</button>')
+ .($r?'<div style="overflow:auto;margin-top:12px"><table><tr><th>Utilisateur</th><th>Formule</th><th>Fin</th><th></th></tr>'.$r.'</table></div>':'<p class="mu" style="margin-top:10px">Aucun abonnement actif.</p>').'</div>');exit;}
+if($a==='legal'){need(false,true);
+ if($post){foreach(['owner','contact','host'] as $k)setSetting('legal_'.$k,mb_substr(trim((string)($_POST[$k]??'')),0,255));
+  foreach(['cgu','privacy'] as $k)setSetting('legal_'.$k,mb_substr(str_replace("\r",'',(string)($_POST[$k]??'')),0,60000));
+  if(!empty($_POST['bump'])){setSetting('legal_version',date('Y-m-d.His'));flash('success','Nouvelle version publiée : les utilisateurs devront accepter à nouveau.');}else flash('success','Textes enregistrés (même version).');go('legal');}
+ $raw=fn($k)=>setting('legal_'.$k,LEGAL_DEFAULTS[$k]);$v=legalVersion();$ok=db()->prepare('SELECT COUNT(*) FROM users WHERE consent_version=?');$ok->execute([$v]);$tot=(int)db()->query('SELECT COUNT(*) FROM users')->fetchColumn();
+ $rc='';foreach(db()->query('SELECT c.*,u.email FROM consents c JOIN users u ON u.id=c.user_id ORDER BY c.id DESC LIMIT 20') as $x)$rc.='<tr><td>'.e($x['email']).'</td><td>'.e($x['version']).'</td><td>'.($x['analytics']?'oui':'non').' / '.($x['marketing']?'oui':'non').'</td><td>'.e($x['source']).'</td><td>'.e(substr($x['created_at'],0,16)).'</td></tr>';
+ page('Textes légaux','<div class="ph"><div><h2>Textes légaux et consentements</h2><p class="mu">Version en vigueur : <b>'.e($v).'</b> · acceptée par '.(int)$ok->fetchColumn().' utilisateur(s) sur '.$tot.'. Pages publiques : '.legalLinks().'</p></div></div>'
+ .'<div class="c"><p class="hp">⚠️ Textes à faire relire par un juriste ou un DPO. Variables utilisables : {APP}, {RESPONSABLE}, {CONTACT}, {HEBERGEUR}, {VERSION}. Mise en forme : ligne vide entre paragraphes, « ## » pour un titre, « - » pour une liste.</p>'.$form(
+  '<div class="g3"><div><label>Responsable du traitement (nom, adresse)</label><input name="owner" value="'.e(setting('legal_owner')).'"></div><div><label>Contact (e-mail)</label><input name="contact" value="'.e(setting('legal_contact')).'"></div><div><label>Hébergeur et pays des serveurs</label><input name="host" value="'.e(setting('legal_host')).'"></div></div>'
+  .'<label>Conditions générales d’utilisation</label><textarea name="cgu" rows="14">'.e($raw('cgu')).'</textarea><label>Politique de confidentialité</label><textarea name="privacy" rows="14">'.e($raw('privacy')).'</textarea>'
+  .'<label style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" name="bump" value="1" style="width:auto;margin:0"> Publier comme nouvelle version : tous les utilisateurs devront accepter à nouveau</label><button>'.icon('check').'Enregistrer</button>').'</div>'
+ .'<div class="c"><h3>Derniers consentements</h3>'.($rc?'<div style="overflow:auto"><table><tr><th>Utilisateur</th><th>Version</th><th>Audience / e-mails</th><th>Source</th><th>Date</th></tr>'.$rc.'</table></div>':'<p class="mu">Aucun pour le moment.</p>').'</div>');exit;}
 if($a==='log'){need(false,true);$f=DATA.'/error.log';page('Journal','<h2>Journal d\'erreurs</h2><pre style="white-space:pre-wrap">'.e(is_file($f)?implode('',array_slice(file($f),-30)):'Vide').'</pre>');exit;}
 go('dash');
