@@ -77,7 +77,8 @@ case 'POST auth/login':
  $s=db()->prepare('SELECT * FROM users WHERE email=?');$s->execute([$em]);$x=$s->fetch();
  if(!$x||!password_verify((string)in('password'),$x['pass_hash'])){usleep(500000);failed($tk);fail('Identifiants invalides.',401);}
  $GLOBALS['API_UID']=(int)$x['id'];out(['ok'=>true,'token'=>newToken((int)$x['id'],(string)in('device','mobile')),'user'=>userOut(me())]);
-case 'POST auth/logout':auth(false);db()->prepare('DELETE FROM api_tokens WHERE id=?')->execute([$GLOBALS['API_TOKEN']]);out(['ok'=>true]);
+case 'POST auth/logout':auth(false);db()->prepare('DELETE FROM api_tokens WHERE id=?')->execute([$GLOBALS['API_TOKEN']]);if(($dt=(string)in('device_token'))!=='')db()->prepare('DELETE FROM devices WHERE token=?')->execute([$dt]);out(['ok'=>true]);
+case 'POST me/device':$u=auth(false);saveDevice((int)$u['id'],(string)in('token'),(string)in('platform','android'));out(['ok'=>true]);
 case 'GET me':out(['ok'=>true,'user'=>userOut(auth(false))]);
 case 'PUT me':case 'POST me':$u=auth();$nm=mb_substr(trim((string)in('name',$u['name'])),0,120);$em=strtolower(trim((string)in('email',$u['email'])));$ph=mb_substr(trim((string)in('phone',(string)($u['phone']??''))),0,30);
  if($nm===''||!filter_var($em,FILTER_VALIDATE_EMAIL))fail('Un nom et une adresse e-mail valides sont requis.');

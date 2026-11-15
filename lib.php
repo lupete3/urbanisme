@@ -139,7 +139,7 @@ migrate();
 function migrate3():void{$f=DATA.'/.v3';if(is_file($f))return;db()->exec("CREATE TABLE IF NOT EXISTS library(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT NOT NULL,name VARCHAR(60) NOT NULL,file VARCHAR(64) NOT NULL,wcm INT NOT NULL DEFAULT 0,hcm INT NOT NULL DEFAULT 0,shared TINYINT NOT NULL DEFAULT 0,created_at DATETIME NOT NULL,FOREIGN KEY(user_id) REFERENCES users(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");@mkdir(DATA.'/lib',0750,true);file_put_contents($f,'1');}
 migrate3();
 
-function notify(int $uid,string $msg,string $link=''):void{db()->prepare('INSERT INTO notifications(user_id,msg,link,created_at) VALUES(?,?,?,NOW())')->execute([$uid,mb_substr($msg,0,255),$link]);}
+function notify(int $uid,string $msg,string $link=''):void{db()->prepare('INSERT INTO notifications(user_id,msg,link,created_at) VALUES(?,?,?,NOW())')->execute([$uid,mb_substr($msg,0,255),$link]);if(function_exists('pushNotify'))pushNotify($uid,$msg,$link);}
 function notifyStaff(string $msg,string $link='',int $except=0):void{foreach(db()->query("SELECT id FROM users WHERE role IN ('admin','gestionnaire')")->fetchAll(PDO::FETCH_COLUMN) as $id)if((int)$id!==$except)notify((int)$id,$msg,$link);}
 function unread():int{static $n;if($n===null){$u=me();if(!$u)return 0;$s=db()->prepare('SELECT COUNT(*) FROM notifications WHERE user_id=? AND read_at IS NULL');$s->execute([$u['id']]);$n=(int)$s->fetchColumn();}return $n;}
 function throttled(string $k):bool{$h=hash('sha256',$k);db()->prepare('DELETE FROM login_fails WHERE ts<?')->execute([time()-900]);$s=db()->prepare('SELECT COUNT(*) FROM login_fails WHERE k=? AND ts>?');$s->execute([$h,time()-900]);return (int)$s->fetchColumn()>=8;}

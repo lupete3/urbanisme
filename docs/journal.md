@@ -1,5 +1,10 @@
 # Journal des évolutions
 
+## 15/11/2026 : Notifications push
+- Envoi des notifications sur les téléphones via Firebase Cloud Messaging (`pushNotify()`), branché sur `notify()`. Inactif tant que la clé Firebase n'est pas réglée.
+- API `POST me/device`, désinscription à la déconnexion. Table `devices` (migration v10).
+- Admin → Accès et tarifs : clé Firebase et notification de test. Guide : [notifications.md](notifications.md).
+
 ## 15/11/2026 : Cartouche des planches
 - Le titre long d'une pièce (ex. PD9) réduit sa police pour ne plus déborder sur la date (`frame()` dans `assets/editor.js`, partagé avec l'appli).
 

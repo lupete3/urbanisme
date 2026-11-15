@@ -13,6 +13,7 @@ Application qui permet aux particuliers et aux professionnels de constituer eux-
 | [docs/acces-et-tarifs.md](docs/acces-et-tarifs.md) | Formules d'accès (gratuit, limité, essai, abonnement, paiement par dossier) |
 | [docs/rgpd-consentement.md](docs/rgpd-consentement.md) | Consentement, textes légaux, droits des utilisateurs, exigences des stores |
 | [docs/api.md](docs/api.md) | API JSON de l'application mobile |
+| [docs/notifications.md](docs/notifications.md) | Notifications dans l'appli et sur téléphone (Firebase) |
 | [docs/plan-mobile.md](docs/plan-mobile.md) | Cahier des charges et avancement du projet mobile |
 | [docs/journal.md](docs/journal.md) | Historique des évolutions |
 

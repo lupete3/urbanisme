@@ -40,7 +40,7 @@ Fichier : `api.php`. Logique métier partagée avec le site : `core.php`.
 | POST | `me/consent` | `{cgu: true, analytics, marketing}` |
 | GET | `me/export` | Export complet des données personnelles |
 | POST | `me/delete` | `{password}` : suppression définitive du compte |
-| POST | `auth/logout` | Révoque le jeton courant |
+| POST | `auth/logout` | `{device_token?}` : révoque le jeton courant et désinscrit le téléphone des notifications |
 
 `GET me`, `me/consent`, `me/export`, `me/delete` et `auth/logout` fonctionnent même si le consentement est à renouveler. Les autres routes renvoient alors `403 consent_required`.
 
@@ -67,6 +67,7 @@ Fichier : `api.php`. Logique métier partagée avec le site : `core.php`.
 
 | Méthode | Route | Description |
 |---|---|---|
+| POST | `me/device` | `{token, platform}` : enregistre le téléphone pour les notifications push (voir [notifications.md](notifications.md)) |
 | GET | `notifications` | 50 dernières + nombre de non lues |
 | POST | `notifications/read` | Tout marquer comme lu |
 | GET | `library` | Objets personnels et partagés |

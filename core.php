@@ -212,3 +212,30 @@ function saveLibraryItem(array $u,?array $f,array $in):?string{
  $fn=bin2hex(random_bytes(16)).'.png';imagepng($im,DATA.'/lib/'.$fn,6);$sh=($u['role']==='admin'&&!empty($in['shared']))?1:0;
  db()->prepare('INSERT INTO library(user_id,name,file,wcm,hcm,shared,created_at) VALUES(?,?,?,?,?,?,NOW())')->execute([$u['id'],mb_substr(trim((string)($in['name']??'Objet')),0,60)?:'Objet',$fn,max(0,min(5000,(int)($in['wcm']??0))),max(0,min(5000,(int)($in['hcm']??0))),$sh]);
  return null;}
+
+/* ---------- Notifications push (Firebase Cloud Messaging, docs/notifications.md) ---------- */
+function migrate10():void{$f=DATA.'/.v10';if(is_file($f))return;
+ db()->exec("CREATE TABLE IF NOT EXISTS devices(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT NOT NULL,token VARCHAR(255) NOT NULL UNIQUE,platform VARCHAR(10) NOT NULL DEFAULT 'android',created_at DATETIME NOT NULL,last_seen DATETIME NOT NULL,INDEX(user_id),FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+ file_put_contents($f,'1');}
+migrate10();
+// Clé du compte de service Firebase : fichier hors du site (DATA), jamais dans Git ni dans la base
+const FCM_KEY='fcm-service-account.json';
+function fcmAccount():?array{$f=DATA.'/'.FCM_KEY;if(!is_file($f))return null;$j=json_decode((string)file_get_contents($f),true);return is_array($j)&&!empty($j['project_id'])&&!empty($j['private_key'])&&!empty($j['client_email'])?$j:null;}
+function b64u(string $s):string{return rtrim(strtr(base64_encode($s),'+/','-_'),'=');}
+function httpPost(string $url,string $body,array $headers):array{$c=curl_init($url);curl_setopt_array($c,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$body,CURLOPT_HTTPHEADER=>$headers,CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>4,CURLOPT_TIMEOUT=>6]);$r=curl_exec($c);$code=(int)curl_getinfo($c,CURLINFO_HTTP_CODE);$err=curl_error($c);curl_close($c);return [$code,$r===false?$err:(string)$r];}
+// Jeton d'accès Google (OAuth 2, JWT signé RS256), mis en cache jusqu'à son expiration
+function fcmAccessToken(array $a):?string{$cf=DATA.'/fcm-token.json';$c=is_file($cf)?json_decode((string)file_get_contents($cf),true):null;if($c&&($c['exp']??0)>time()+60)return $c['token'];
+ $now=time();$h=b64u(json_encode(['alg'=>'RS256','typ'=>'JWT']));$p=b64u(json_encode(['iss'=>$a['client_email'],'scope'=>'https://www.googleapis.com/auth/firebase.messaging','aud'=>'https://oauth2.googleapis.com/token','iat'=>$now,'exp'=>$now+3600]));
+ if(!openssl_sign("$h.$p",$sig,$a['private_key'],'sha256WithRSAEncryption')){error_log('Firebase : clé privée invalide');return null;}
+ [$code,$r]=httpPost('https://oauth2.googleapis.com/token',http_build_query(['grant_type'=>'urn:ietf:params:oauth:grant-type:jwt-bearer','assertion'=>"$h.$p.".b64u($sig)]),['Content-Type: application/x-www-form-urlencoded']);
+ $j=json_decode($r,true);if($code!==200||empty($j['access_token'])){error_log('Firebase : jeton refusé ('.$code.') '.mb_substr($r,0,300));return null;}
+ @file_put_contents($cf,json_encode(['token'=>$j['access_token'],'exp'=>$now+(int)($j['expires_in']??3600)]));return $j['access_token'];}
+// Envoie la notification sur tous les téléphones de l'utilisateur. Sans configuration Firebase : ne fait rien.
+function pushNotify(int $uid,string $msg,string $link=''):void{try{
+ $a=fcmAccount();if(!$a)return;$s=db()->prepare('SELECT id,token FROM devices WHERE user_id=?');$s->execute([$uid]);$ds=$s->fetchAll();if(!$ds)return;
+ $t=fcmAccessToken($a);if(!$t)return;
+ foreach($ds as $d){[$code,$r]=httpPost('https://fcm.googleapis.com/v1/projects/'.rawurlencode($a['project_id']).'/messages:send',json_encode(['message'=>['token'=>$d['token'],'notification'=>['title'=>APP,'body'=>mb_substr($msg,0,240)],'data'=>['link'=>$link],'android'=>['priority'=>'high','notification'=>['color'=>'#0d3466']]]]),['Content-Type: application/json','Authorization: Bearer '.$t]);
+  if($code===404||($code===400&&str_contains($r,'registration token')))db()->prepare('DELETE FROM devices WHERE id=?')->execute([$d['id']]);elseif($code!==200)error_log('Firebase : envoi refusé ('.$code.') '.mb_substr($r,0,300));}
+}catch(Throwable $x){error_log('Firebase : '.$x->getMessage());}}
+function saveDevice(int $uid,string $token,string $platform):void{$token=mb_substr(trim($token),0,255);if($token==='')return;
+ db()->prepare('INSERT INTO devices(user_id,token,platform,created_at,last_seen) VALUES(?,?,?,NOW(),NOW()) ON DUPLICATE KEY UPDATE user_id=VALUES(user_id),platform=VALUES(platform),last_seen=NOW()')->execute([$uid,$token,in_array($platform,['android','ios'],true)?$platform:'android']);}
