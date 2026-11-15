@@ -38,4 +38,4 @@ Chaque appel à `notify()` (dossier débloqué, paiement validé, accès offert�
 
 ## Tests effectués (15/11/2026, environnement local)
 
-Avec une clé factice : clé acceptée et enregistrée hors du site, jeton signé, requête envoyée à Google (réponse « compte introuvable », attendue), erreur notée au journal sans bloquer, notification enregistrée et visible dans l'appli. Le test avec un vrai projet Firebase reste à faire.
+Avec une clé factice : clé acceptée et enregistrée hors du site, jeton signé, requête envoyée à Google (réponse « compte introuvable », attendue), erreur notée au journal sans bloquer, notification enregistrée et visible dans l'appli. Test réel le 15/11/2026 : projet dossierurba-f9a48, notification de test reçue sur le téléphone du client.
